@@ -1,22 +1,20 @@
-﻿using DisruptorUnity3d;
+﻿using Ashkatchap.Shared.Collections;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 
 namespace Ashkatchap.Updater {
 	public partial class FrameUpdater {
 		public class WorkerManager {
-			private readonly FrameUpdater updater;
 			private readonly AutoResetEvent waiter = new AutoResetEvent(false);
 			private readonly Thread thread;
 
 			internal readonly JobArray[] jobsToDo; // Only "thread" writes, others only read
 			private readonly Worker[] workers;
 
-			private readonly RingBuffer<QueuedJob> jobPool = new RingBuffer<QueuedJob>(16384);
-			private readonly RingBuffer<KeyValuePair<QueuedJob, byte>> queuedJobsWantingToChangePriority = new RingBuffer<KeyValuePair<QueuedJob, byte>>(8192);
-			private readonly RingBuffer<QueuedJob> queuedJobsToShedule = new RingBuffer<QueuedJob>(8192);
-			private readonly Volatile.PaddedLong queuedJobIdCounter = new Volatile.PaddedLong();
+			private readonly ThreadSafeObjectPool<QueuedJob> jobPool = new ThreadSafeObjectPool<QueuedJob>(16384);
+			private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob> queuedJobsWantingToChangePriority = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob>(8192);
+			private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob> queuedJobsToShedule = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob>(8192);
+			private readonly Volatile.PaddedInt queuedJobIdCounter = new Volatile.PaddedInt();
 
 
 			internal byte currentPriority = 0;
@@ -24,9 +22,8 @@ namespace Ashkatchap.Updater {
 
 
 
-			public WorkerManager(FrameUpdater updater, int numWorkers) {
-				Logger.Info("Current Executor Version: 0.19");
-				this.updater = updater;
+			public WorkerManager(int numWorkers) {
+				Logger.Info("Current Executor Version: 0.2");
 				jobsToDo = new JobArray[256];
 				for (int i = 0; i < jobsToDo.Length; i++) jobsToDo[i] = new JobArray();
 
@@ -45,6 +42,8 @@ namespace Ashkatchap.Updater {
 
 			internal void OnDestroy() {
 				for (int i = 0; i < workers.Length; i++) workers[i].OnDestroy();
+				thread.Interrupt();
+				thread.Abort();
 			}
 
 
@@ -59,32 +58,19 @@ namespace Ashkatchap.Updater {
 
 			// This can be called from any thread!!!!
 			public JobReference RequestQueueMultithreadJobInstance(Job job, int numberOfIterations, byte priority) {
-				QueuedJob queuedJob;
 				UnityEngine.Profiling.Profiler.BeginSample("a");
-				if (!jobPool.TryDequeue(out queuedJob)) {
-					UnityEngine.Profiling.Profiler.BeginSample("a2");
-					queuedJob = new QueuedJob();
-					UnityEngine.Profiling.Profiler.EndSample();
-				}
+				QueuedJob queuedJob = jobPool.Get();
 				UnityEngine.Profiling.Profiler.EndSample();
 				UnityEngine.Profiling.Profiler.BeginSample("b");
-				queuedJob.Init(this, job, numberOfIterations, queuedJobIdCounter.AtomicAddAndGet(1), priority);
+				queuedJob.Init(this, job, numberOfIterations, queuedJobIdCounter.InterlockedIncrement(), priority);
 				UnityEngine.Profiling.Profiler.EndSample();
 
 				UnityEngine.Profiling.Profiler.BeginSample("c");
 				if (workers.Length == 0) {
-				// If single thread, do the job already and return
+					// If single thread, do the job already and return
 					queuedJob.WaitForFinish();
 				} else {
-					int counterWaiting = 0;
-					while (!queuedJobsToShedule.TryEnqueue(queuedJob)) {
-						if (counterWaiting++ < 10) {
-							Thread.SpinWait(100);
-						} else {
-							queuedJob.WaitForFinish();
-							break;
-						}
-					}
+					queuedJobsToShedule.Enqueue(queuedJob);
 					SignalExecutor();
 				}
 				UnityEngine.Profiling.Profiler.EndSample();
@@ -96,7 +82,9 @@ namespace Ashkatchap.Updater {
 			}
 
 			internal void RequestJobPriorityChange(QueuedJob queuedJob, byte newPriority) {
-				queuedJobsWantingToChangePriority.TryEnqueue(new KeyValuePair<QueuedJob, byte>(queuedJob, newPriority));
+				queuedJob.wantedPriority = newPriority;
+				Thread.MemoryBarrier();
+				queuedJobsWantingToChangePriority.Enqueue(queuedJob);
 				SignalExecutor();
 			}
 
@@ -112,42 +100,41 @@ namespace Ashkatchap.Updater {
 					for (int p = 0; p < jobsToDo.Length; p++) {
 						for (int i = jobsToDo[p].count - 1; i >= 0; i--) {
 							if (jobsToDo[p].array[i].IsFinished()) {
-								var jobToQueue = jobsToDo[p].array[i];
+								var jobToRecycle = jobsToDo[p].array[i];
 								jobsToDo[p].RemoveAtAuto(p, i);
-								jobToQueue.insideJobsToDo = false;
-								jobPool.TryEnqueue(jobToQueue);
+								RecycleJobSingleThread(jobToRecycle);
 
 								somethingDeleted = true;
-							} else {
-								i++;
 							}
 						}
 					}
 
 					// Add Max Priority jobs to the priority 0. They may not be in jobsToDo (if they are not finished)
-					KeyValuePair<QueuedJob, byte> toUpdate;
+					QueuedJob toUpdate;
 					while (queuedJobsWantingToChangePriority.TryDequeue(out toUpdate)) {
-						if (!toUpdate.Key.IsFinished()) {
-							if (toUpdate.Key.insideJobsToDo) {
-								jobsToDo[toUpdate.Key.priority].RemoveAuto(toUpdate.Key.priority, toUpdate.Key);
+						if (!toUpdate.IsFinished()) {
+							if (toUpdate.insideJobsToDo) {
+								jobsToDo[toUpdate.priority].RemoveAuto(toUpdate.priority, toUpdate);
 							} else {
 								somethingAdded = true;
-								lowestPriority = Math.Min(lowestPriority, toUpdate.Value);
+								lowestPriority = Math.Min(lowestPriority, toUpdate.wantedPriority);
 							}
-							jobsToDo[toUpdate.Value].AddAuto(toUpdate.Value, toUpdate.Key);
-							toUpdate.Key.insideJobsToDo = true;
+							jobsToDo[toUpdate.wantedPriority].AddAuto(toUpdate.wantedPriority, toUpdate);
+							toUpdate.insideJobsToDo = true;
 						}
 					}
 
 					// Add normal jobs from the queue (if they are not finished)
 					QueuedJob toAdd;
 					while (queuedJobsToShedule.TryDequeue(out toAdd)) {
-						if (!toAdd.IsFinished()) {
-							if (!toAdd.insideJobsToDo) {
+						if (!toAdd.insideJobsToDo) {
+							if (!toAdd.IsFinished()) {
 								jobsToDo[toAdd.priority].AddAuto(toAdd.priority, toAdd);
 								toAdd.insideJobsToDo = true;
 								somethingAdded = true;
 								lowestPriority = Math.Min(lowestPriority, toAdd.priority);
+							} else {
+								RecycleJobSingleThread(toAdd);
 							}
 						}
 					}
@@ -166,22 +153,28 @@ namespace Ashkatchap.Updater {
 					waiter.WaitOne();
 				}
 			}
+
+			private void RecycleJobSingleThread(QueuedJob job) {
+				job.insideJobsToDo = false;
+				jobPool.Recycle(job);
+			}
 		}
 
 		internal partial class QueuedJob {
 			// Variables only used by Executor. They will be readed and written ONLY by the executor
 			internal bool insideJobsToDo = false;
 			internal byte priority;
+			internal byte wantedPriority;
 
 		}
 
 		internal static void SecureLaunchThread(Action action) {
-			try {
+			//try {
 				action();
-			}
-			catch(Exception e) {
-				Logger.Error(e.ToString());
-			}
+			//}
+			//catch(Exception e) {
+			//	Logger.Error(e.ToString());
+			//}
 		}
 
 		/// <summary>

@@ -196,7 +196,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2086083114}
   - component: {fileID: 2086083113}
-  - component: {fileID: 2086083115}
   m_Layer: 0
   m_Name: Tester
   m_TagString: Untagged
@@ -215,7 +214,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c83828d706fead4e81217be4f19b309, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  arraySize: 10
+  arraySize: 100
   multithreadIterations: 100
 --- !u!4 &2086083114
 Transform:
@@ -230,20 +229,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2086083115
-MonoBehaviour:
-  m_ObjectHideFlags: 16
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 2086083112}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5eafa0791c0026b4cbbe651529485063, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  text: "En lugar de crear un objeto JobReference,\ncrear un struct que tenga un int
-    que apunte\na un array donde est\xE9n los structs con la\ninformaci\xF3n importante,
-    equivalente a\nJobReference.\n\nInterlockedExchange"
 --- !u!1 &2124020618
 GameObject:
   m_ObjectHideFlags: 0

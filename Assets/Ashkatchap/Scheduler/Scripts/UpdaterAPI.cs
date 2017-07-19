@@ -13,6 +13,7 @@ namespace Ashkatchap.Updater {
 					return;
 #endif
 				Instance = new GameObject("Updater").AddComponent<FrameUpdater>();
+				Logger.Info("Updater created");
 			}
 		}
 

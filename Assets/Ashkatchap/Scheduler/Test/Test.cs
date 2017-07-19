@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Ashkatchap.Shared;
+using System;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Profiling;
 
@@ -41,10 +43,11 @@ namespace Ashkatchap.Updater {
 			i = (i + 1) % firstUpdate.Length;
 			Profiler.EndSample();
 		}
+		
 		Action UpdateMethod2Cached;
 		void UpdateMethod2() {
 			Profiler.BeginSample("2");
-			//TO DO: Stop watch start
+			//var clock = StopwatchPool.StartClock();
 			jobs[i].WaitForFinish();
 			//TO DO: Stop watch end
 			// And check min, max and mid

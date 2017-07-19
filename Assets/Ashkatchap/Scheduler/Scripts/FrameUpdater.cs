@@ -1,7 +1,6 @@
 ﻿using Ashkatchap.Shared;
 using Ashkatchap.Shared.Collections;
 using Ashkatchap.Updater.Behaviours;
-using DisruptorUnity3d;
 using System;
 using UnityEngine;
 using UnityEngine.Profiling;
@@ -50,7 +49,7 @@ namespace Ashkatchap.Updater {
 		
 		private int nextRecurrentId;
 
-		void Awake() {
+		private void OnEnable() {
 			//gameObject.hideFlags = HideFlags.HideAndDontSave;
 			DontDestroyOnLoad(gameObject);
 
@@ -59,16 +58,16 @@ namespace Ashkatchap.Updater {
 
 			SetUpUpdaters();
 
-			HotReloadDetector.Subscribe(() => { }, SetUpUpdaters);
+			Logger.Debug("Updater GameObject created and Updater Behaviours configured");
 
-			Logger.Debug("Updater GameObject created and Updaters configured");
-
-			executor = new WorkerManager(this, ProcessorCount - 1);
+			executor = new WorkerManager(ProcessorCount - 1);
 			Logger.Info("Executor created");
 		}
 
-		private void OnDestroy() {
+		private void OnDisable() {
 			executor.OnDestroy();
+			Destroy(firstUpdater);
+			Destroy(lastUpdater);
 		}
 
 		private void SetUpUpdaters() {
@@ -115,13 +114,7 @@ namespace Ashkatchap.Updater {
 		}
 
 		public void QueueUpdateCallbackInstance(QueueOrder queue, Action method) {
-			RingBuffer<Action> rb = GetUpdaterList(queue).queuedUpdateCallbacks;
-			while (!rb.TryEnqueue(method)) {
-				Action action;
-				if (rb.TryDequeue(out action)) {
-					action();
-				}
-			}
+			GetUpdaterList(queue).queuedUpdateCallbacks.Enqueue(method);
 			Logger.Debug("Queued Update method");
 		}
 		
@@ -167,7 +160,7 @@ namespace Ashkatchap.Updater {
 
 		private class UpdaterList {
 			internal readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];
-			internal readonly RingBuffer<Action> queuedUpdateCallbacks = new RingBuffer<Action>(256); // Can change in any Thread
+			internal readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action> queuedUpdateCallbacks = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action>(256); // Can change in any Thread
 
 			private object pendingListsLocker = new object();
 			private readonly UnorderedList<DelayedAdd> pendingAdds = new UnorderedList<DelayedAdd>();
