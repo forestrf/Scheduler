@@ -1,0 +1,16 @@
+[X] arrays of methods to call each frame (Action). Each method has assigned a priority.
+[X] Priorities match with different Unity update stages: (First Update), Update (Last Update), (First LateUpdate), LateUpdate, (Last LateUpdate)
+[ ] multithreaded job queue. after each update finish, check if any job finished and do something with it
+[ ] if no updates remain, wait for the jobs (join as a thread to one of the queues if possible) and do something with them. Repeat until no jobs remain
+
+[ ] to add a job, you have to options:
+[ ] Simply call a method passing an Action. Returns an int = id
+[ ] Call a method passing an Action. that returns a class that represents a job in the sequencer. Use this object to remove the job later. It is used internally to keep track of how long it takes to run and do planning scheduling it
+[ ] Each job has:
+	delegate => job,
+	priority => it has to be done before this priority ends + frame number in wich to finish (so you can do work after update ends and rendering starts)
+	delegate<int> => method to call in main thread when it is done. parameter = random int that equals the one returned when the job was added.
+
+[ ] When a job ends it is removed, unless it is a recurrent job
+
+[ ] Job Actions have 2 ints: First is the thread index that is running it, second is the number of threads working on the problem
