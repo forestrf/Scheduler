@@ -13,33 +13,30 @@ namespace Ashkatchap.Updater {
 
 		internal partial class QueuedJob {
 			private Job job;
-			private int index;
-			private int length;
-			private bool isFinished = true;
-			internal long id;
+			private int index = 0;
+			private int length = 0;
+			private int id;
 			internal WorkerManager executor;
 			
-			internal void Init(WorkerManager executor, Job job, int length, long id, byte priority) {
-				if (!this.isFinished) {
-					Logger.Warn("Thread safety broken. Errors may appear, like executing the same job index more than one time.");
+			internal void Init(WorkerManager executor, Job job, int length, int id, byte priority) {
+				if (!IsFinished()) {
+					//Logger.Warn("Thread safety broken. Errors may appear, like executing the same job index more than one time.");
 				}
 				this.executor = executor;
 				this.job = job;
 				this.id = id;
 				this.length = length;
-				this.index = 0;
 				this.priority = priority;
-				this.isFinished = false;
+				Thread.MemoryBarrier();
+				this.index = -1;
 				Thread.MemoryBarrier();
 			}
 
 			internal bool TryExecute() {
-				if (!isFinished) {
+				if (index < length) {
 					int indexToRun = Interlocked.Increment(ref index) - 1;
 					// check to see if it repeats a number
 					if (indexToRun < length) {
-						job(indexToRun);
-						/*
 						try {
 							//Logger.Trace("Thread <" + Thread.CurrentThread.Name + ">: Executing job " + id + " iteration " + indexToRun.ToString());
 
@@ -47,7 +44,7 @@ namespace Ashkatchap.Updater {
 						} catch (Exception e) {
 							Logger.Error(e.ToString());
 						}
-						*/
+						
 						return true;
 					} else {
 						FinishJob();
@@ -67,35 +64,40 @@ namespace Ashkatchap.Updater {
 			}
 
 			public bool IsFinished() {
-				return isFinished;
+				return index >= length;
 			}
 
 			private void FinishJob() {
-				isFinished = true;
 				Interlocked.Exchange(ref index, length);
-				Thread.MemoryBarrier();
 			}
 
 			public void ChangePriority(byte newPriority) {
 				executor.RequestJobPriorityChange(this, newPriority);
 			}
+
+			public bool CheckId(int id) {
+				return this.id == id;
+			}
+			public int GetId() {
+				return this.id;
+			}
 		}
 
 		public struct JobReference {
 			private QueuedJob job;
-			private long id;
+			private int id;
 
 			internal JobReference(QueuedJob job) {
 				this.job = job;
-				this.id = job.id;
+				this.id = job.GetId();
 			}
 
 			public void WaitForFinish() {
-				if (job.id == id) job.WaitForFinish();
+				if (job.CheckId(id)) job.WaitForFinish();
 			}
 
 			public void Destroy() {
-				if (job.id == id) job.Destroy();
+				if (job.CheckId(id)) job.Destroy();
 			}
 		}
 		

@@ -23,7 +23,6 @@ namespace Ashkatchap.Updater {
 
 
 			public WorkerManager(int numWorkers) {
-				Logger.Info("Current Executor Version: 0.2");
 				jobsToDo = new JobArray[256];
 				for (int i = 0; i < jobsToDo.Length; i++) jobsToDo[i] = new JobArray();
 
@@ -96,7 +95,7 @@ namespace Ashkatchap.Updater {
 					bool somethingDeleted = false;
 					int lowestPriority = int.MaxValue;
 
-					// Search for finished jobs, to remove/pool them
+					// Search and Pool finished jobs
 					for (int p = 0; p < jobsToDo.Length; p++) {
 						for (int i = jobsToDo[p].count - 1; i >= 0; i--) {
 							if (jobsToDo[p].array[i].IsFinished()) {
@@ -168,13 +167,14 @@ namespace Ashkatchap.Updater {
 
 		}
 
-		internal static void SecureLaunchThread(Action action) {
-			//try {
+		internal static void SecureLaunchThread(Action action, string name) {
+			try {
 				action();
-			//}
-			//catch(Exception e) {
-			//	Logger.Error(e.ToString());
-			//}
+			}
+			catch(Exception e) {
+				if (e.GetType() != typeof(ThreadInterruptedException) && e.GetType() != typeof(ThreadAbortException))
+					Logger.Error(e.ToString());
+			}
 		}
 
 		/// <summary>

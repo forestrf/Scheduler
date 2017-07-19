@@ -140,14 +140,12 @@ namespace Ashkatchap.Updater {
 				var queue = updater.recurrentCallbacks[i];
 				for (int j = 0; j < queue.Size; j++) {
 					queue.elements[j].action();
-					/*
 					try {
 						queue.elements[j].action();
 					}
 					catch (Exception e) {
 						Logger.Error(e.ToString());
 					}
-					*/
 				}
 			}
 			Profiler.EndSample();

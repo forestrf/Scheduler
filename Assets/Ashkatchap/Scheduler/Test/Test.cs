@@ -1,6 +1,5 @@
 ﻿using Ashkatchap.Shared;
 using System;
-using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.Profiling;
 

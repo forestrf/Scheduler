@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -26,8 +25,7 @@ namespace Ashkatchap.Shared.Collections {
 			do {
 				Thread.MemoryBarrier(); // obtain a fresh _producerCursor
 				indexToWriteOn = _producerCursor.value;
-			} while (null == (object) Interlocked.CompareExchange(ref _entries[indexToWriteOn], obj, null));
-			Thread.MemoryBarrier(); // _entries must be filled before _producerCursor advances
+			} while (ReferenceEquals(null, Interlocked.CompareExchange(ref _entries[indexToWriteOn], obj, null)));
 			_producerCursor.value = _producerCursor.value == _entries.Length - 1 ? 0 : _producerCursor.value + 1;
 			Thread.MemoryBarrier(); // _producerCursor must be written eventually now
 		}
@@ -51,11 +49,7 @@ namespace Ashkatchap.Shared.Collections {
 		public struct PaddedInt {
 			[FieldOffset(CacheLineSize)]
 			public int value;
-
-			/// <summary>
-			/// Create a new <see cref="PaddedLong"/> with the given initial value.
-			/// </summary>
-			/// <param name="value">Initial value</param>
+			
 			public PaddedInt(int value) {
 				this.value = value;
 			}
