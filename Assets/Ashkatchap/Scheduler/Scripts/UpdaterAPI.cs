@@ -28,7 +28,7 @@ namespace Ashkatchap.Updater {
 			Instance.QueueUpdateCallbackInstance(queue, method);
 		}
 
-		public static FrameUpdater.JobReference QueueMultithreadJob(FrameUpdater.Job callback, int numberOfIterations, byte priority = 127) {
+		public static FrameUpdater.JobReference QueueMultithreadJob(FrameUpdater.Job callback, ushort numberOfIterations, byte priority = 127) {
 			return Instance.QueueMultithreadJobInstance(callback, numberOfIterations, priority);
 		}
 	}

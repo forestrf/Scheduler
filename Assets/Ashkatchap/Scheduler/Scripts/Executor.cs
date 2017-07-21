@@ -1,28 +1,21 @@
 ﻿using Ashkatchap.Shared.Collections;
 using System;
+using System.Collections.Generic;
 using System.Threading;
+using UnityEngine.Profiling;
 
 namespace Ashkatchap.Updater {
 	public partial class FrameUpdater {
 		public class WorkerManager {
-			private readonly AutoResetEvent waiter = new AutoResetEvent(false);
-			private readonly Thread thread;
-
 			internal readonly JobArray[] jobsToDo; // Only "thread" writes, others only read
 			private readonly Worker[] workers;
 
-			private readonly ThreadSafeObjectPool<QueuedJob> jobPool = new ThreadSafeObjectPool<QueuedJob>(16384);
-			private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob> queuedJobsWantingToChangePriority = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob>(8192);
-			private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob> queuedJobsToShedule = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob>(8192);
-			private readonly Volatile.PaddedInt queuedJobIdCounter = new Volatile.PaddedInt();
+			private UnorderedList<QueuedJob> pool = new UnorderedList<QueuedJob>();
+			
+			internal byte lastActionStamp = 0;
 
-
-			internal byte currentPriority = 0;
-			internal byte currentPriorityStamp = 0;
-
-
-
-			public WorkerManager(int numWorkers) {
+			
+			public WorkerManager(FrameUpdater updater, int numWorkers) {
 				jobsToDo = new JobArray[256];
 				for (int i = 0; i < jobsToDo.Length; i++) jobsToDo[i] = new JobArray();
 
@@ -32,148 +25,83 @@ namespace Ashkatchap.Updater {
 				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i);
 				Logger.Info("Spawned workers: " + workers.Length);
 
-				thread = new Thread(()=> { SecureLaunchThread(ThreadMethod); });
-				thread.Name = "Worker Feeder";
-				thread.Priority = ThreadPriority.AboveNormal;
-				thread.IsBackground = true;
-				thread.Start();
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PreUpdate, 0);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.Update, 0);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PostUpdate, 0);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PreLateUpdate, 0);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.LateUpdate, 0);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PostLateUpdate, 0);
 			}
 
 			internal void OnDestroy() {
 				for (int i = 0; i < workers.Length; i++) workers[i].OnDestroy();
-				thread.Interrupt();
-				thread.Abort();
 			}
 
-
-			internal void SignalExecutor() {
-				waiter.Set();
-			}
+			
 			private void SignalWorkers() {
 				for (int i = 0; i < workers.Length; i++) workers[i].waiter.Set();
 			}
 
+			
+			
+			public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority) {
+				if (Thread.CurrentThread != mainThread) {
+					Logger.Warn("WaitForFinish can only be called from the main thread");
+					return default(JobReference);
+				}
+				var queuedJob = pool.Count > 0 ? pool.ExtractLast() : new QueuedJob();
+				Profiler.BeginSample("b");
+				queuedJob.Init(job, numberOfIterations, priority);
+				Profiler.EndSample();
 
-
-			// This can be called from any thread!!!!
-			public JobReference RequestQueueMultithreadJobInstance(Job job, int numberOfIterations, byte priority) {
-				UnityEngine.Profiling.Profiler.BeginSample("a");
-				QueuedJob queuedJob = jobPool.Get();
-				UnityEngine.Profiling.Profiler.EndSample();
-				UnityEngine.Profiling.Profiler.BeginSample("b");
-				queuedJob.Init(this, job, numberOfIterations, queuedJobIdCounter.InterlockedIncrement(), priority);
-				UnityEngine.Profiling.Profiler.EndSample();
-
-				UnityEngine.Profiling.Profiler.BeginSample("c");
+				Profiler.BeginSample("c");
 				if (workers.Length == 0) {
 					// If single thread, do the job already and return
 					queuedJob.WaitForFinish();
 				} else {
-					queuedJobsToShedule.Enqueue(queuedJob);
-					SignalExecutor();
+					jobsToDo[queuedJob.wantedPriority].AddAuto(queuedJob.wantedPriority, queuedJob);
+					lastActionStamp++;
+					Thread.MemoryBarrier();
+					SignalWorkers();
 				}
-				UnityEngine.Profiling.Profiler.EndSample();
+				Profiler.EndSample();
 				return new JobReference(queuedJob);
 			}
 			
-			internal void RequestSetJobToAllThreads(QueuedJob queuedJob) {
-				RequestJobPriorityChange(queuedJob, 0);
+			internal void SetJobToAllThreads(QueuedJob queuedJob) {
+				JobPriorityChange(queuedJob, 0);
 			}
 
-			internal void RequestJobPriorityChange(QueuedJob queuedJob, byte newPriority) {
+			internal void JobPriorityChange(QueuedJob queuedJob, byte newPriority) {
+				if (Thread.CurrentThread != mainThread) {
+					Logger.Warn("WaitForFinish can only be called from the main thread");
+					return;
+				}
 				queuedJob.wantedPriority = newPriority;
 				Thread.MemoryBarrier();
-				queuedJobsWantingToChangePriority.Enqueue(queuedJob);
-				SignalExecutor();
+
+				jobsToDo[queuedJob.wantedPriority].AddAuto(queuedJob.wantedPriority, queuedJob);
+				lastActionStamp++;
+				Thread.MemoryBarrier();
+
+				SignalWorkers();
 			}
 
 
 
-			private void ThreadMethod() {
-				while (true) {
-					bool somethingAdded = false;
-					bool somethingDeleted = false;
-					int lowestPriority = int.MaxValue;
-
-					// Search and Pool finished jobs
-					for (int p = 0; p < jobsToDo.Length; p++) {
-						for (int i = jobsToDo[p].count - 1; i >= 0; i--) {
-							if (jobsToDo[p].array[i].IsFinished()) {
-								var jobToRecycle = jobsToDo[p].array[i];
-								jobsToDo[p].RemoveAtAuto(p, i);
-								RecycleJobSingleThread(jobToRecycle);
-
-								somethingDeleted = true;
-							}
+			private void Cleaner() {
+				Profiler.BeginSample("Cleaner");
+				// Search and Pool finished jobs
+				for (int p = 0; p < jobsToDo.Length; p++) {
+					for (int i = jobsToDo[p].count - 1; i >= 0; i--) {
+						var job = jobsToDo[p].array[i];
+						if (job.IsFinished()) {
+							jobsToDo[p].RemoveAtAuto(p, i);
+							pool.Add(job);
 						}
 					}
-
-					// Add Max Priority jobs to the priority 0. They may not be in jobsToDo (if they are not finished)
-					QueuedJob toUpdate;
-					while (queuedJobsWantingToChangePriority.TryDequeue(out toUpdate)) {
-						if (!toUpdate.IsFinished()) {
-							if (toUpdate.insideJobsToDo) {
-								jobsToDo[toUpdate.priority].RemoveAuto(toUpdate.priority, toUpdate);
-							} else {
-								somethingAdded = true;
-								lowestPriority = Math.Min(lowestPriority, toUpdate.wantedPriority);
-							}
-							jobsToDo[toUpdate.wantedPriority].AddAuto(toUpdate.wantedPriority, toUpdate);
-							toUpdate.insideJobsToDo = true;
-						}
-					}
-
-					// Add normal jobs from the queue (if they are not finished)
-					QueuedJob toAdd;
-					while (queuedJobsToShedule.TryDequeue(out toAdd)) {
-						if (!toAdd.insideJobsToDo) {
-							if (!toAdd.IsFinished()) {
-								jobsToDo[toAdd.priority].AddAuto(toAdd.priority, toAdd);
-								toAdd.insideJobsToDo = true;
-								somethingAdded = true;
-								lowestPriority = Math.Min(lowestPriority, toAdd.priority);
-							} else {
-								RecycleJobSingleThread(toAdd);
-							}
-						}
-					}
-
-					// write changes to ram if needed
-					if (somethingAdded) {
-						currentPriority = (byte) lowestPriority;
-						currentPriorityStamp++;
-						Thread.MemoryBarrier();
-						SignalWorkers();
-					} else if (somethingDeleted) {
-						Thread.MemoryBarrier();
-					}
-
-					// Queues processed, wait until we have more work to do
-					waiter.WaitOne();
 				}
-			}
-
-			private void RecycleJobSingleThread(QueuedJob job) {
-				job.insideJobsToDo = false;
-				jobPool.Recycle(job);
-			}
-		}
-
-		internal partial class QueuedJob {
-			// Variables only used by Executor. They will be readed and written ONLY by the executor
-			internal bool insideJobsToDo = false;
-			internal byte priority;
-			internal byte wantedPriority;
-
-		}
-
-		internal static void SecureLaunchThread(Action action, string name) {
-			try {
-				action();
-			}
-			catch(Exception e) {
-				if (e.GetType() != typeof(ThreadInterruptedException) && e.GetType() != typeof(ThreadAbortException))
-					Logger.Error(e.ToString());
+				Profiler.EndSample();
 			}
 		}
 

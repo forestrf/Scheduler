@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 
 namespace Ashkatchap.Updater {
 	public partial class FrameUpdater {
@@ -9,7 +10,7 @@ namespace Ashkatchap.Updater {
 
 			public Worker(WorkerManager executor, int index) {
 				this.executor = executor;
-				thread = new Thread(() => { SecureLaunchThread(ThreadMethod); });
+				thread = new Thread(() => { SecureLaunchThread(ThreadMethod, "Worker FrameUpdater [" + index + "]"); });
 				thread.Name = "Worker FrameUpdater [" + index + "]";
 				thread.Priority = ThreadPriority.AboveNormal;
 				thread.IsBackground = true;
@@ -33,9 +34,9 @@ namespace Ashkatchap.Updater {
 					int i = 0;
 					do {
 						Thread.MemoryBarrier();// We want to read the latest executor's highest priority index
-						var currentExecutorPriorityStamp = executor.currentPriorityStamp;
+						var currentExecutorPriorityStamp = executor.lastActionStamp;
 						if (currentExecutorPriorityStamp != lastExecutorPriorityStamp) {
-							p = executor.currentPriority;
+							p = 0;
 							i = 0;
 							lastExecutorPriorityStamp = currentExecutorPriorityStamp;
 						}
@@ -43,7 +44,7 @@ namespace Ashkatchap.Updater {
 						// The executor may replace this array from another thread
 						// Because of that, we cache a reference to the array
 						var array = executor.jobsToDo[p].array; // cache a reference
-						QueuedJob queuedJob = i < array.Length ? array[i] : null;
+						var queuedJob = i < array.Length ? array[i] : null;
 						if (queuedJob == null) {
 							// We reached the last element of the "dynamic" array
 							p++;
@@ -56,6 +57,16 @@ namespace Ashkatchap.Updater {
 
 					// If we reach this point, then we wait for more work:
 					waiter.WaitOne();
+				}
+			}
+
+			internal static void SecureLaunchThread(Action action, string name) {
+				try {
+					action();
+				}
+				catch (Exception e) {
+					if (e.GetType() != typeof(ThreadInterruptedException) && e.GetType() != typeof(ThreadAbortException))
+						Logger.Error(e.ToString());
 				}
 			}
 		}

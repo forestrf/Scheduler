@@ -2,6 +2,7 @@
 using Ashkatchap.Shared.Collections;
 using Ashkatchap.Updater.Behaviours;
 using System;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Profiling;
 
@@ -49,6 +50,12 @@ namespace Ashkatchap.Updater {
 		
 		private int nextRecurrentId;
 
+		public static Thread mainThread { get; private set; }
+
+		private void Awake() {
+			mainThread = Thread.CurrentThread;
+		}
+
 		private void OnEnable() {
 			//gameObject.hideFlags = HideFlags.HideAndDontSave;
 			DontDestroyOnLoad(gameObject);
@@ -60,7 +67,7 @@ namespace Ashkatchap.Updater {
 
 			Logger.Debug("Updater GameObject created and Updater Behaviours configured");
 
-			executor = new WorkerManager(ProcessorCount - 1);
+			executor = new WorkerManager(this, ProcessorCount - 1);
 			Logger.Info("Executor created");
 		}
 
