@@ -1,6 +1,5 @@
 ﻿using Ashkatchap.Shared.Collections;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using UnityEngine.Profiling;
 
@@ -15,22 +14,23 @@ namespace Ashkatchap.Updater {
 			internal byte lastActionStamp = 0;
 
 			
-			public WorkerManager(FrameUpdater updater, int numWorkers) {
+			public WorkerManager(FrameUpdater updater) {
 				jobsToDo = new JobArray[256];
 				for (int i = 0; i < jobsToDo.Length; i++) jobsToDo[i] = new JobArray();
 
 				Thread.MemoryBarrier();
 
+				int numWorkers = Math.Max(1, ProcessorCount - 1);
 				workers = new Worker[numWorkers];
 				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i);
 				Logger.Info("Spawned workers: " + workers.Length);
 
-				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PreUpdate, 0);
-				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.Update, 0);
-				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PostUpdate, 0);
-				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PreLateUpdate, 0);
-				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.LateUpdate, 0);
-				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PostLateUpdate, 0);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PreUpdate, 255);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.Update, 255);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PostUpdate, 255);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PreLateUpdate, 255);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.LateUpdate, 255);
+				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PostLateUpdate, 255);
 			}
 
 			internal void OnDestroy() {
@@ -45,27 +45,27 @@ namespace Ashkatchap.Updater {
 			
 			
 			public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority) {
-				if (Thread.CurrentThread != mainThread) {
-					Logger.Warn("WaitForFinish can only be called from the main thread");
-					return default(JobReference);
-				}
-				var queuedJob = pool.Count > 0 ? pool.ExtractLast() : new QueuedJob();
-				Profiler.BeginSample("b");
-				queuedJob.Init(job, numberOfIterations, priority);
-				Profiler.EndSample();
+				Logger.WarnAssert(!IsMainThread(), "QueueMultithreadJobInstance can only be called from the main thread");
+				if (!IsMainThread()) return default(JobReference);
 
-				Profiler.BeginSample("c");
-				if (workers.Length == 0) {
-					// If single thread, do the job already and return
-					queuedJob.WaitForFinish();
+				if (FORCE_SINGLE_THREAD) {
+					for (int i = 0; i < numberOfIterations; i++) {
+						job(i);
+					}
+					return new JobReference(null);
 				} else {
-					jobsToDo[queuedJob.wantedPriority].AddAuto(queuedJob.wantedPriority, queuedJob);
+					var queuedJob = pool.Count > 0 ? pool.ExtractLast() : new QueuedJob();
+					queuedJob.Init(job, numberOfIterations, priority);
+
+					jobsToDo[queuedJob.priority].AddAuto(queuedJob.priority, queuedJob);
 					lastActionStamp++;
 					Thread.MemoryBarrier();
+
+					Profiler.BeginSample("Signal Workers");
 					SignalWorkers();
+					Profiler.EndSample();
+					return new JobReference(queuedJob);
 				}
-				Profiler.EndSample();
-				return new JobReference(queuedJob);
 			}
 			
 			internal void SetJobToAllThreads(QueuedJob queuedJob) {
@@ -73,14 +73,13 @@ namespace Ashkatchap.Updater {
 			}
 
 			internal void JobPriorityChange(QueuedJob queuedJob, byte newPriority) {
-				if (Thread.CurrentThread != mainThread) {
-					Logger.Warn("WaitForFinish can only be called from the main thread");
-					return;
-				}
-				queuedJob.wantedPriority = newPriority;
+				Logger.WarnAssert(!IsMainThread(), "JobPriorityChange can only be called from the main thread");
+				if (!IsMainThread()) return;
+				
 				Thread.MemoryBarrier();
-
-				jobsToDo[queuedJob.wantedPriority].AddAuto(queuedJob.wantedPriority, queuedJob);
+				jobsToDo[queuedJob.priority].RemoveAuto(queuedJob.priority, queuedJob);
+				queuedJob.priority = newPriority;
+				jobsToDo[newPriority].AddAuto(newPriority, queuedJob);
 				lastActionStamp++;
 				Thread.MemoryBarrier();
 
@@ -161,6 +160,7 @@ namespace Ashkatchap.Updater {
 						return;
 					}
 				}
+				Logger.Error("Trying to remove but it does not exist!");
 			}
 			private void Remove(QueuedJob queuedJob) {
 				for (int i = 0; i < count; i++) {
@@ -169,6 +169,7 @@ namespace Ashkatchap.Updater {
 						return;
 					}
 				}
+				Logger.Error("Trying to remove but it does not exist!");
 			}
 
 			public void RemoveAtAuto(int queue, int index) {

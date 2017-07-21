@@ -59,6 +59,10 @@ namespace Ashkatchap.Shared.Collections {
 			public int InterlockedIncrement() {
 				return Interlocked.Increment(ref value);
 			}
+
+			public override string ToString() {
+				return value.ToString();
+			}
 		}
 	}
 }

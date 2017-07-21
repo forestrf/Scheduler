@@ -214,8 +214,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c83828d706fead4e81217be4f19b309, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  arraySize: 100
+  arraySize: 50
   multithreadIterations: 100
+  singleThread: 1
+  workPerIteration: 10000
 --- !u!4 &2086083114
 Transform:
   m_ObjectHideFlags: 0

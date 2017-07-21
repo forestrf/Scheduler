@@ -32,6 +32,7 @@ namespace Ashkatchap.Updater {
 					short lastExecutorPriorityStamp = -1; // it will always fail the first time
 					int p = 0;
 					int i = 0;
+					bool workDone = false;
 					do {
 						Thread.MemoryBarrier();// We want to read the latest executor's highest priority index
 						var currentExecutorPriorityStamp = executor.lastActionStamp;
@@ -49,14 +50,18 @@ namespace Ashkatchap.Updater {
 							// We reached the last element of the "dynamic" array
 							p++;
 							i = 0;
-						} else if (!queuedJob.TryExecute()) {
+						} else if (queuedJob.TryExecute()) {
+							workDone = true;
+						} else {
 							i++;
 						}
 					} while (p < executor.jobsToDo.Length);
 
-
-					// If we reach this point, then we wait for more work:
-					waiter.WaitOne();
+					// We want to check for work to do until we make a full inspection of jobsToDo and find nothing 
+					if (!workDone) {
+						// If we reach this point, then we wait for more work:
+						waiter.WaitOne();
+					}
 				}
 			}
 

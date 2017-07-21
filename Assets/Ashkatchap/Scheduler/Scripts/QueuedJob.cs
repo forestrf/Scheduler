@@ -1,4 +1,5 @@
-﻿using Ashkatchap.Shared.Collections;
+﻿#pragma warning disable 420
+
 using System;
 using System.Threading;
 
@@ -10,7 +11,8 @@ namespace Ashkatchap.Updater {
 
 			#region EXECUTOR_RW WORKER_RW
 			private Job job;
-			private Volatile.PaddedInt index;
+			private volatile int index;
+			private volatile int doneIndices;
 			private ushort length;
 			#endregion
 
@@ -20,32 +22,42 @@ namespace Ashkatchap.Updater {
 
 			#region EXECUTOR_RW
 			internal byte priority;
-			internal byte wantedPriority;
 			#endregion
 
 
 			internal void Init(Job job, ushort length, byte priority) {
-				if (!IsFinished()) {
-					Logger.Warn("Thread safety broken. Errors may appear, like executing the same job index more than one time.");
-				}
+				Logger.WarnAssert(!IsMainThread(), "Init can only be called from the main thread");
+				if (!IsMainThread()) return;
+				
+				Thread.MemoryBarrier();
 				this.job = job;
 				temporalId = lastId++;
-				this.length = length;
 				this.priority = priority;
 				Thread.MemoryBarrier();
-				index.value = 0;
+				index = 0;
+				doneIndices = 0;
 				Thread.MemoryBarrier();
+				this.length = length;
+				Thread.MemoryBarrier();
+
+				Logger.TraceVerbose("[" + temporalId + "] job created");
 			}
 
 			internal bool TryExecute() {
-				if (index.value < length) {
-					int indexToRun = Interlocked.Increment(ref index.value) - 1;
-					// check to see if it repeats a number
+				Thread.MemoryBarrier();
+				if (index < length) {
+					int indexToRun = Interlocked.Increment(ref index) - 1;
 					if (indexToRun < length) {
 						try {
 							job(indexToRun);
 						} catch (Exception e) {
 							Logger.Error(e.ToString());
+						} finally {
+
+							int f = Interlocked.Increment(ref doneIndices);
+							if (f == length) {
+								Logger.TraceVerbose("[" + temporalId + "] job finished");
+							}
 						}
 						
 						return true;
@@ -57,15 +69,29 @@ namespace Ashkatchap.Updater {
 			public void WaitForFinish() {
 				executor.SetJobToAllThreads(this);
 				while (true) if (!TryExecute()) break;
+				while (!IsFinished()) {
+					Thread.SpinWait(20);
+				}
 			}
 
 			public void Destroy() {
-				Interlocked.Exchange(ref index.value, int.MaxValue);
+				Logger.WarnAssert(!IsMainThread(), "Init can only be called from the main thread");
+				if (!IsMainThread()) return;
+
+				doneIndices = length;
+				index = length;
+				Thread.MemoryBarrier();
 			}
 
 			public bool IsFinished() {
-				Thread.MemoryBarrier();
-				return index.value >= length;
+				int f = doneIndices;
+				if (f == length) {
+					return true;
+				} else if (f > length) {
+					Logger.Error("doneIndices is greater than length");
+					return true;
+				}
+				return false;
 			}
 
 			public void ChangePriority(byte newPriority) {

@@ -67,7 +67,7 @@ namespace Ashkatchap.Updater {
 
 			Logger.Debug("Updater GameObject created and Updater Behaviours configured");
 
-			executor = new WorkerManager(this, ProcessorCount - 1);
+			executor = new WorkerManager(this);
 			Logger.Info("Executor created");
 		}
 
@@ -112,12 +112,18 @@ namespace Ashkatchap.Updater {
 		public RecurrentReference AddRecurrentUpdateCallbackInstance(Action method, QueueOrder queue, byte order = 127) {
 			var updater = GetUpdaterList(queue);
 			ActionWrapped aw = new ActionWrapped(nextRecurrentId++, method);
-			updater.AddDelayed(aw, order);
+			updater.recurrentCallbacks[order].Add(aw);
 			return new RecurrentReference(aw.id, queue, order);
 		}
 		public void RemoveRecurrentUpdateCallbackInstance(RecurrentReference reference) {
 			var updater = GetUpdaterList(reference.queue);
-			updater.RemoveDelayed(reference);
+			var list = updater.recurrentCallbacks[reference.order];
+			for (int i = 0; i < list.Size; i++) {
+				if (list.elements[i].id == reference.id) {
+					list.RemoveAt(i);
+					return;
+				}
+			}
 		}
 
 		public void QueueUpdateCallbackInstance(QueueOrder queue, Action method) {
@@ -138,15 +144,10 @@ namespace Ashkatchap.Updater {
 		}
 		
 		private static void LoopUpdate(QueueOrder queueOrder, UpdaterList updater) {
-			Profiler.BeginSample("Queue ExecutePendingChanges");
-			updater.ExecuteDelayedActions();
-			Profiler.EndSample();
-
 			Profiler.BeginSample("Queue Iterate");
 			for (int i = 0; i < updater.recurrentCallbacks.Length; i++) {
 				var queue = updater.recurrentCallbacks[i];
 				for (int j = 0; j < queue.Size; j++) {
-					queue.elements[j].action();
 					try {
 						queue.elements[j].action();
 					}
@@ -166,79 +167,10 @@ namespace Ashkatchap.Updater {
 		private class UpdaterList {
 			internal readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];
 			internal readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action> queuedUpdateCallbacks = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action>(256); // Can change in any Thread
-
-			private object pendingListsLocker = new object();
-			private readonly UnorderedList<DelayedAdd> pendingAdds = new UnorderedList<DelayedAdd>();
-			private readonly UnorderedList<DelayedRemove> pendingRemoves = new UnorderedList<DelayedRemove>();
-			
+						
 			public UpdaterList() {
 				for (int i = 0; i < recurrentCallbacks.Length; i++) {
 					recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(16, 16);
-				}
-			}
-
-			public void AddDelayed(ActionWrapped aw, byte order) {
-				lock (pendingListsLocker) {
-					pendingAdds.Add(new DelayedAdd(aw, order));
-				}
-			}
-			public void RemoveDelayed(RecurrentReference reference) {
-				lock (pendingListsLocker) {
-					pendingRemoves.Add(new DelayedRemove(reference));
-				}
-			}
-
-			public void ExecuteDelayedActions() {
-				lock (pendingListsLocker) {
-					for (int i = 0; i < pendingAdds.Size; i++) pendingAdds.elements[i].Execute(this);
-					pendingAdds.Clear(true);
-					for (int i = 0; i < pendingRemoves.Size; i++) pendingRemoves.elements[i].Execute(this);
-					pendingRemoves.Clear(true);
-				}
-			}
-
-			private struct DelayedAdd {
-				private byte order;
-				private bool done;
-				private ActionWrapped actionToAdd;
-
-				public DelayedAdd(ActionWrapped actionToAdd, byte order) {
-					this.actionToAdd = actionToAdd;
-					this.order = order;
-					done = false;
-				}
-
-				public void Execute(UpdaterList updater) {
-					if (done) return;
-
-					updater.recurrentCallbacks[order].Add(actionToAdd);
-					Logger.Trace("Added update method");
-					
-					done = true;
-				}
-			}
-			private struct DelayedRemove {
-				private bool done;
-				private RecurrentReference actionToRemove;
-				
-				public DelayedRemove(RecurrentReference actionToRemove) {
-					this.actionToRemove = actionToRemove;
-					done = false;
-				}
-
-				public void Execute(UpdaterList updater) {
-					if (done) return;
-
-					var list = updater.recurrentCallbacks[actionToRemove.order];
-					for (int i = 0; i < list.Size; i++) {
-						if (list.elements[i].id == actionToRemove.id) {
-							list.RemoveAt(i);
-							Logger.Trace("Removed update method");
-							break;
-						}
-					}
-					
-					done = true;
 				}
 			}
 		}

@@ -13,31 +13,33 @@ namespace Ashkatchap.Updater {
 		public struct JobReference {
 			private QueuedJob job;
 			private int id;
-
+			
 			internal JobReference(QueuedJob job) {
 				this.job = job;
-				this.id = job.GetId();
+				this.id = job != null ? job.GetId() : -1;
 			}
 
 			public void WaitForFinish() {
-				if (Thread.CurrentThread != mainThread) {
-					Logger.Warn("WaitForFinish can only be called from the main thread");
-					return;
-				}
+				Logger.WarnAssert(!IsMainThread(), "WaitForFinish can only be called from the main thread");
+				if (!IsMainThread()) return;
+				if (job == null) return;
 				if (job.CheckId(id)) job.WaitForFinish();
 			}
 
 			public void Destroy() {
-				if (Thread.CurrentThread != mainThread) {
-					Logger.Warn("WaitForFinish can only be called from the main thread");
-					return;
-				}
+				Logger.WarnAssert(!IsMainThread(), "Destroy can only be called from the main thread");
+				if (!IsMainThread()) return;
+				if (job == null) return;
 				if (job.CheckId(id)) job.Destroy();
 			}
 		}
 		
 		public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority) {
 			return executor.QueueMultithreadJobInstance(job, numberOfIterations, priority);
+		}
+
+		public static bool IsMainThread() {
+			return Thread.CurrentThread == mainThread;
 		}
 	}
 }
