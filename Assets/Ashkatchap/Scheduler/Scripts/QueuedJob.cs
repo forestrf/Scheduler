@@ -44,25 +44,22 @@ namespace Ashkatchap.Updater {
 			}
 
 			internal bool TryExecute() {
-				Thread.MemoryBarrier();
-				if (index < length) {
-					int indexToRun = Interlocked.Increment(ref index) - 1;
-					if (indexToRun < length) {
-						try {
-							job(indexToRun);
-						} catch (Exception e) {
-							Logger.Error(e.ToString());
-						} finally {
-
-							int f = Interlocked.Increment(ref doneIndices);
-							if (f == length) {
-								Logger.TraceVerbose("[" + temporalId + "] job finished");
-							}
+				int indexToRun = Interlocked.Increment(ref index) - 1;
+				if (indexToRun < length) {
+					try {
+						job(indexToRun);
+					} catch (Exception e) {
+						Logger.Error(e.ToString());
+					} finally {
+						int f = Interlocked.Increment(ref doneIndices);
+						if (f == length) {
+							Logger.TraceVerbose("[" + temporalId + "] job finished");
 						}
-						
-						return true;
 					}
+						
+					return true;
 				}
+				
 				return false;
 			}
 

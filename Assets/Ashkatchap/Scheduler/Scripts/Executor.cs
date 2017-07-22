@@ -11,7 +11,7 @@ namespace Ashkatchap.Updater {
 
 			private UnorderedList<QueuedJob> pool = new UnorderedList<QueuedJob>();
 			
-			internal byte lastActionStamp = 0;
+			internal volatile byte lastActionStamp = 0;
 
 			
 			public WorkerManager(FrameUpdater updater) {
@@ -22,7 +22,7 @@ namespace Ashkatchap.Updater {
 
 				int numWorkers = Math.Max(1, ProcessorCount - 1);
 				workers = new Worker[numWorkers];
-				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i);
+				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i, numWorkers);
 				Logger.Info("Spawned workers: " + workers.Length);
 
 				updater.AddRecurrentUpdateCallbackInstance(Cleaner, QueueOrder.PreUpdate, 255);
@@ -39,7 +39,8 @@ namespace Ashkatchap.Updater {
 
 			
 			private void SignalWorkers() {
-				for (int i = 0; i < workers.Length; i++) workers[i].waiter.Set();
+				int l = UnityEngine.Mathf.Clamp(NUM_THREADS, 0, workers.Length);
+				for (int i = 0; i < l; i++) workers[i].waiter.Set();
 			}
 
 			
@@ -59,7 +60,6 @@ namespace Ashkatchap.Updater {
 
 					jobsToDo[queuedJob.priority].AddAuto(queuedJob.priority, queuedJob);
 					lastActionStamp++;
-					Thread.MemoryBarrier();
 
 					Profiler.BeginSample("Signal Workers");
 					SignalWorkers();
@@ -81,7 +81,6 @@ namespace Ashkatchap.Updater {
 				queuedJob.priority = newPriority;
 				jobsToDo[newPriority].AddAuto(newPriority, queuedJob);
 				lastActionStamp++;
-				Thread.MemoryBarrier();
 
 				SignalWorkers();
 			}

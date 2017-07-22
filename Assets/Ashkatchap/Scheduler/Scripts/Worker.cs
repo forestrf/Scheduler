@@ -7,9 +7,12 @@ namespace Ashkatchap.Updater {
 			private readonly Thread thread;
 			internal readonly AutoResetEvent waiter = new AutoResetEvent(false);
 			private WorkerManager executor;
+			private int index, count;
 
-			public Worker(WorkerManager executor, int index) {
+			public Worker(WorkerManager executor, int index, int count) {
 				this.executor = executor;
+				this.index = index;
+				this.count = count;
 				thread = new Thread(() => { SecureLaunchThread(ThreadMethod, "Worker FrameUpdater [" + index + "]"); });
 				thread.Name = "Worker FrameUpdater [" + index + "]";
 				thread.Priority = ThreadPriority.AboveNormal;
@@ -34,7 +37,6 @@ namespace Ashkatchap.Updater {
 					int i = 0;
 					bool workDone = false;
 					do {
-						Thread.MemoryBarrier();// We want to read the latest executor's highest priority index
 						var currentExecutorPriorityStamp = executor.lastActionStamp;
 						if (currentExecutorPriorityStamp != lastExecutorPriorityStamp) {
 							p = 0;

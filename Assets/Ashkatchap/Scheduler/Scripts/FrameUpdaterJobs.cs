@@ -4,6 +4,7 @@ using System.Threading;
 namespace Ashkatchap.Updater {
 	public partial class FrameUpdater {
 		public static bool FORCE_SINGLE_THREAD = false;
+		public static int NUM_THREADS = 8;
 		private static readonly int ProcessorCount = Math.Min(Environment.ProcessorCount, 64);
 		public delegate void Job(int index);
 
