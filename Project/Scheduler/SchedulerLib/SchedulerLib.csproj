@@ -37,7 +37,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Ashkatchap\Scheduler\Scripts\Collections\ThreadSafeObjectPool.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\Collections\ThreadSafeRingBuffer.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\Executor.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\JobReference.cs" />

@@ -10,10 +10,11 @@ namespace Ashkatchap.Updater {
 
 		#region EXECUTOR_RW WORKER_RW
 		private Job job;
-		private volatile int index;
 		private volatile int doneIndices;
 		private ushort length;
 		#endregion
+
+		private readonly Range[] indices;
 
 		#region EXECUTOR_RW WORKER_R
 		private int temporalId;
@@ -22,6 +23,12 @@ namespace Ashkatchap.Updater {
 		#region EXECUTOR_RW
 		internal byte priority;
 		#endregion
+
+
+		public QueuedJob() {
+			indices = new Range[Scheduler.ProcessorCount];
+			for (int i = 0; i < indices.Length; i++) indices[i] = new Range();
+		}
 
 
 		internal void Init(Job job, ushort length, byte priority) {
@@ -33,7 +40,8 @@ namespace Ashkatchap.Updater {
 			temporalId = lastId++;
 			this.priority = priority;
 			Thread.MemoryBarrier();
-			index = 0;
+			for (int i = 0; i < indices.Length - 1; i++) indices[i].Set(0, 1, 0);
+			indices[indices.Length - 1].Set(0, 0, length - 1);
 			doneIndices = 0;
 			Thread.MemoryBarrier();
 			this.length = length;
@@ -42,24 +50,71 @@ namespace Ashkatchap.Updater {
 			Logger.TraceVerbose("[" + temporalId + "] job created");
 		}
 
-		internal bool TryExecute() {
-			int indexToRun = Interlocked.Increment(ref index) - 1;
-			if (indexToRun < length) {
-				try {
-					job(indexToRun);
-				} catch (Exception e) {
-					Logger.Error(e.ToString());
-				} finally {
-					int f = Interlocked.Increment(ref doneIndices);
+		internal bool TryExecute(int workerIndex) {
+			int startIndex = -1, index = -1, lastIndex = -1;
+			var ind = indices[workerIndex];
+
+			// Get next index if available
+			lock (ind) {
+				lastIndex = ind.lastIndex;
+				if (ind.index <= lastIndex) {
+					startIndex = ind.startIndex;
+					index = ind.index;
+					++ind.index;
+				}
+			}
+
+			if (index == -1) {
+				// our range does not have more indices left. Get more indices from another range
+				for (int i = indices.Length - 1; i >= 0; i--) {
+					var otherInd = indices[i];
+					if (otherInd.index < otherInd.lastIndex) {
+						int stolenIndex = -1;
+						int stolenLastIndex = -1;
+						lock (otherInd) {
+							if (otherInd.index < otherInd.lastIndex) {
+								// This thread has enough indices, we can steal some of them
+								int range = otherInd.lastIndex + 1 - otherInd.index;
+
+								stolenLastIndex = otherInd.lastIndex;
+								otherInd.lastIndex = otherInd.index + range / 2 - 1;
+								stolenIndex = otherInd.index + range / 2;
+							}
+						}
+						if (stolenIndex != -1) {
+							lock (ind) {
+								startIndex = ind.startIndex = stolenIndex;
+								index = stolenIndex;
+								ind.index = stolenIndex + 1;
+								lastIndex = ind.lastIndex = stolenLastIndex;
+							}
+							break;
+						}
+					}
+				}
+			}
+
+			if (index == -1) {
+				return false;
+			}
+
+			
+			try {
+				job(index);
+			} catch (Exception e) {
+				Logger.Error(e.ToString());
+			} finally {
+				if (index == lastIndex) {
+					// if we end a range update doneIndices with the size of the range
+					int rangeDone = lastIndex - startIndex + 1;
+					int f = Interlocked.Add(ref doneIndices, rangeDone); // increment when the current batch is done, not every step
 					if (f == length) {
 						Logger.TraceVerbose("[" + temporalId + "] job finished");
 					}
 				}
-						
-				return true;
 			}
-				
-			return false;
+						
+			return true;
 		}
 
 		public void WaitForFinish() {
@@ -71,7 +126,7 @@ namespace Ashkatchap.Updater {
 				return;
 			}
 			Scheduler.executor.SetJobToAllThreads(this);
-			while (true) if (!TryExecute()) break;
+			while (true) if (!TryExecute(Scheduler.ProcessorCount - 1)) break;
 			while (!IsFinished()) {
 				Thread.SpinWait(20);
 			}
@@ -82,7 +137,12 @@ namespace Ashkatchap.Updater {
 			if (!Scheduler.InMainThread()) return;
 
 			doneIndices = length;
-			index = length;
+
+			for (int i = 0; i < indices.Length; i++) {
+				lock (indices[i]) {
+					indices[i].Set(0, 1, 0);
+				}
+			}
 			Thread.MemoryBarrier();
 		}
 
@@ -114,6 +174,23 @@ namespace Ashkatchap.Updater {
 		}
 		public int GetId() {
 			return temporalId;
+		}
+
+
+
+
+
+
+		public class Range {
+			public int startIndex;
+			public int index;
+			public int lastIndex;
+			
+			public void Set(int startIndex, int index, int lastIndex) {
+				this.startIndex = startIndex;
+				this.index = index;
+				this.lastIndex = lastIndex;
+			}
 		}
 	}
 }

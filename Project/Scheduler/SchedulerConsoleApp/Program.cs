@@ -14,8 +14,7 @@ public class Program {
 		for (int i = 0; true; i++) {
 			var w = Stopwatch.StartNew();
 			updater.Execute();
-			if (i % 100 == 0)
-			Console.WriteLine(w.Elapsed.TotalMilliseconds);
+			Console.WriteLine(w.Elapsed.TotalMilliseconds + "ms");
 		}
 	}
 

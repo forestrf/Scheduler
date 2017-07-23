@@ -15,6 +15,9 @@ namespace Ashkatchap.Shared.Collections {
 			_entries = new T[capacity];
 		}
 		
+		/// <summary>
+		/// Thread safe Enqueue from any thread
+		/// </summary>
 		public void Enqueue(T obj) {
 			if (obj == null) {
 				Logger.Warn("Trying to Enqueue null. It is not supported because internally null represents a free place in the buffer for this algorithm.");
@@ -26,10 +29,15 @@ namespace Ashkatchap.Shared.Collections {
 				Thread.MemoryBarrier(); // obtain a fresh _producerCursor
 				indexToWriteOn = _producerCursor.value;
 			} while (ReferenceEquals(null, Interlocked.CompareExchange(ref _entries[indexToWriteOn], obj, null)));
-			_producerCursor.value = _producerCursor.value == _entries.Length - 1 ? 0 : _producerCursor.value + 1;
+			_producerCursor.value = indexToWriteOn == _entries.Length - 1 ? 0 : indexToWriteOn + 1;
 			Thread.MemoryBarrier(); // _producerCursor must be written eventually now
 		}
 		
+		/// <summary>
+		/// Thread unsafe. It must always be called from only one thread
+		/// </summary>
+		/// <param name="item">The dequeued item if success, null otherwise</param>
+		/// <returns>Whether it was possible to dequeue an item, only possible if there are queued items</returns>
 		public bool TryDequeue(out T item) {
 			Thread.MemoryBarrier();
 			item = _entries[_consumerCursor];
@@ -44,20 +52,16 @@ namespace Ashkatchap.Shared.Collections {
 		}
 	}
 
-	public static class Volatile {
+	internal static class Volatile {
 		private const int CacheLineSize = 64;
 
 		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
 		public struct PaddedInt {
 			[FieldOffset(CacheLineSize)]
 			public volatile int value;
-			
+
 			public PaddedInt(int value) {
 				this.value = value;
-			}
-
-			public int InterlockedIncrement() {
-				return Interlocked.Increment(ref value);
 			}
 
 			public override string ToString() {

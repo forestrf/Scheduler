@@ -53,7 +53,7 @@ namespace Ashkatchap.Updater {
 							p++;
 							i = 0;
 						} else {
-							if (queuedJob.TryExecute()) {
+							if (queuedJob.TryExecute(index)) {
 								workDone = true;
 							} else {
 								i++;
