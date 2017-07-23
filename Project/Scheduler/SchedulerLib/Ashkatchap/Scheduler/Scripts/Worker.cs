@@ -52,10 +52,12 @@ namespace Ashkatchap.Updater {
 							// We reached the last element of the "dynamic" array
 							p++;
 							i = 0;
-						} else if (queuedJob.TryExecute()) {
-							workDone = true;
 						} else {
-							i++;
+							if (queuedJob.TryExecute()) {
+								workDone = true;
+							} else {
+								i++;
+							}
 						}
 					} while (p < executor.jobsToDo.Length);
 

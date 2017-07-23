@@ -50,7 +50,7 @@ namespace Ashkatchap.Shared.Collections {
 		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
 		public struct PaddedInt {
 			[FieldOffset(CacheLineSize)]
-			public int value;
+			public volatile int value;
 			
 			public PaddedInt(int value) {
 				this.value = value;

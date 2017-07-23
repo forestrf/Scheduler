@@ -1,5 +1,6 @@
 ﻿using Ashkatchap.Updater;
 using System;
+using System.Diagnostics;
 
 public class Program {
 	static Updater updater;
@@ -11,9 +12,10 @@ public class Program {
 		p.Awake();
 		p.Start();
 		for (int i = 0; true; i++) {
+			var w = Stopwatch.StartNew();
 			updater.Execute();
 			if (i % 100 == 0)
-			Console.WriteLine(i);
+			Console.WriteLine(w.Elapsed.TotalMilliseconds);
 		}
 	}
 
@@ -22,8 +24,8 @@ public class Program {
 	UpdateReference[] secondUpdate;
 	JobReference[] jobs;
 
-	public int arraySize = 50;
-	public ushort multithreadIterations = 100;
+	public int arraySize = 100;
+	public ushort multithreadIterations = 1000;
 	public bool singleThread = false;
 	public int NUM_THREADS = 8;
 
