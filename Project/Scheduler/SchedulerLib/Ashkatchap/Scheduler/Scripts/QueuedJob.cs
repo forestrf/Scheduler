@@ -1,6 +1,7 @@
 ﻿#pragma warning disable 420
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace Ashkatchap.Updater {
@@ -50,7 +51,7 @@ namespace Ashkatchap.Updater {
 			Logger.TraceVerbose("[" + temporalId + "] job created");
 		}
 
-		internal bool TryExecute(int workerIndex) {
+		internal bool TryExecute(int workerIndex, ref KeyValuePair<int, int>[] tmp) {
 			int startIndex = -1, index = -1, lastIndex = -1;
 			var ind = indices[workerIndex];
 
@@ -66,29 +67,48 @@ namespace Ashkatchap.Updater {
 
 			if (index == -1) {
 				// our range does not have more indices left. Get more indices from another range
-				for (int i = indices.Length - 1; i >= 0; i--) {
-					var otherInd = indices[i];
-					if (otherInd.index < otherInd.lastIndex) {
-						int stolenIndex = -1;
-						int stolenLastIndex = -1;
-						lock (otherInd) {
-							if (otherInd.index < otherInd.lastIndex) {
-								// This thread has enough indices, we can steal some of them
-								int range = otherInd.lastIndex + 1 - otherInd.index;
+				// First, without locking we sort all the threads by the range available
+				if (tmp == null || tmp.Length != indices.Length - 1) {
+					tmp = new KeyValuePair<int, int>[indices.Length - 1];
+				}
 
-								stolenLastIndex = otherInd.lastIndex;
-								otherInd.lastIndex = otherInd.index + range / 2 - 1;
-								stolenIndex = otherInd.index + range / 2;
+				bool somethingFound = false;
+				for (int i = 0, j = 0; i < indices.Length; i++) {
+					if (i == workerIndex) continue;
+					var otherInd = indices[i];
+					int range = otherInd.lastIndex + 1 - otherInd.index;
+					tmp[j++] = new KeyValuePair<int, int>(i, range);
+					if (range > 0) somethingFound = true;
+				}
+
+				if (somethingFound) {
+					// sort by range
+					Array.Sort(tmp, sortByRange);
+					
+					for (int i = 0; i < tmp.Length; i++) {
+						var otherInd = indices[tmp[i].Key];
+						if (otherInd.index < otherInd.lastIndex) {
+							int stolenIndex = -1;
+							int stolenLastIndex = -1;
+							lock (otherInd) {
+								if (otherInd.index < otherInd.lastIndex) {
+									// This thread has enough indices, we can steal some of them
+									int range = otherInd.lastIndex + 1 - otherInd.index;
+
+									stolenLastIndex = otherInd.lastIndex;
+									otherInd.lastIndex = otherInd.index + range / 2 - 1;
+									stolenIndex = otherInd.index + range / 2;
+								}
 							}
-						}
-						if (stolenIndex != -1) {
-							lock (ind) {
-								startIndex = ind.startIndex = stolenIndex;
-								index = stolenIndex;
-								ind.index = stolenIndex + 1;
-								lastIndex = ind.lastIndex = stolenLastIndex;
+							if (stolenIndex != -1) {
+								lock (ind) {
+									startIndex = ind.startIndex = stolenIndex;
+									index = stolenIndex;
+									ind.index = stolenIndex + 1;
+									lastIndex = ind.lastIndex = stolenLastIndex;
+								}
+								break;
 							}
-							break;
 						}
 					}
 				}
@@ -117,6 +137,12 @@ namespace Ashkatchap.Updater {
 			return true;
 		}
 
+		// DESC order
+		private static Comparison<KeyValuePair<int, int>> sortByRange = (a, b) => {
+			return b.Value - a.Value;
+		};
+
+		private KeyValuePair<int, int>[] tmpForMainThread;
 		public void WaitForFinish() {
 			Logger.ErrorAssert(!Scheduler.InMainThread(), "WaitForFinish can only be called from the main thread");
 			if (!Scheduler.InMainThread()) return;
@@ -126,7 +152,7 @@ namespace Ashkatchap.Updater {
 				return;
 			}
 			Scheduler.executor.SetJobToAllThreads(this);
-			while (true) if (!TryExecute(Scheduler.ProcessorCount - 1)) break;
+			while (true) if (!TryExecute(indices.Length - 1, ref tmpForMainThread)) break;
 			while (!IsFinished()) {
 				Thread.SpinWait(20);
 			}
@@ -182,9 +208,9 @@ namespace Ashkatchap.Updater {
 
 
 		public class Range {
-			public int startIndex;
-			public int index;
-			public int lastIndex;
+			public volatile int startIndex;
+			public volatile int index;
+			public volatile int lastIndex;
 			
 			public void Set(int startIndex, int index, int lastIndex) {
 				this.startIndex = startIndex;
