@@ -20,7 +20,7 @@ namespace Ashkatchap.Updater {
 
 				Thread.MemoryBarrier();
 
-				int numWorkers = Math.Max(1, Scheduler.ProcessorCount - 1);
+				int numWorkers = Math.Max(1, Scheduler.AVAILABLE_CORES - 1);
 				workers = new Worker[numWorkers];
 				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i, numWorkers);
 
@@ -33,7 +33,7 @@ namespace Ashkatchap.Updater {
 
 			
 			private void SignalWorkers() {
-				int l = UnityEngine.Mathf.Clamp(Scheduler.DESIRED_NUM_THREADS, 0, workers.Length);
+				int l = Scheduler.CORES_IN_USE - 1;
 				for (int i = 0; i < l; i++) workers[i].waiter.Set();
 			}
 

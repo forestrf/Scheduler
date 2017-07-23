@@ -26,7 +26,7 @@ namespace Ashkatchap.Updater {
 
 
 		public QueuedJob() {
-			indices = new Range[Scheduler.ProcessorCount];
+			indices = new Range[Scheduler.AVAILABLE_CORES];
 			for (int i = 0; i < indices.Length; i++) indices[i] = new Range();
 		}
 
@@ -126,7 +126,7 @@ namespace Ashkatchap.Updater {
 				return;
 			}
 			Scheduler.executor.SetJobToAllThreads(this);
-			while (true) if (!TryExecute(Scheduler.ProcessorCount - 1)) break;
+			while (true) if (!TryExecute(Scheduler.AVAILABLE_CORES - 1)) break;
 			while (!IsFinished()) {
 				Thread.SpinWait(20);
 			}

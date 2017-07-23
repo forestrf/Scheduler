@@ -13,8 +13,9 @@ public class Program {
 		p.Start();
 		for (int i = 0; true; i++) {
 			var w = Stopwatch.StartNew();
-			updater.Execute();
-			Console.WriteLine(w.Elapsed.TotalMilliseconds + "ms");
+			for (int j = 0; j < 10; j++)
+				updater.Execute();
+			Console.WriteLine((w.Elapsed.TotalMilliseconds / 10f) + "ms");
 		}
 	}
 
@@ -63,7 +64,7 @@ public class Program {
 	int i = 0;
 	void UpdateMethod1() {
 		Scheduler.FORCE_SINGLE_THREAD = singleThread;
-		Scheduler.DESIRED_NUM_THREADS = NUM_THREADS;
+		Scheduler.DESIRED_NUM_CORES = NUM_THREADS;
 		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations);
 		i = (i + 1) % firstUpdate.Length;
 	}
