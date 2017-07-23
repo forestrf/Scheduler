@@ -6,13 +6,14 @@ public class Program {
 	public static void Main(string[] args) {
 		updater = new Updater();
 		Scheduler.MultithreadingStart(updater);
-
 		
 		Program p = new Program();
 		p.Awake();
 		p.Start();
-		while (true) {
+		for (int i = 0; true; i++) {
 			updater.Execute();
+			if (i % 100 == 0)
+			Console.WriteLine(i);
 		}
 	}
 
@@ -21,12 +22,12 @@ public class Program {
 	UpdateReference[] secondUpdate;
 	JobReference[] jobs;
 
-	public int arraySize = 10000;
+	public int arraySize = 50;
 	public ushort multithreadIterations = 100;
 	public bool singleThread = false;
 	public int NUM_THREADS = 8;
 
-	public int workPerIteration = 10000;
+	public int workPerIteration = 0;
 
 	Action DoNothingCached;
 	Action UpdateMethod1Cached;

@@ -23,7 +23,6 @@ namespace Ashkatchap.Updater {
 				int numWorkers = Math.Max(1, Scheduler.ProcessorCount - 1);
 				workers = new Worker[numWorkers];
 				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i, numWorkers);
-				Logger.Info("Spawned workers: " + workers.Length);
 
 				updater.AddUpdateCallback(Cleaner, 255);
 			}
@@ -36,6 +35,10 @@ namespace Ashkatchap.Updater {
 			private void SignalWorkers() {
 				int l = UnityEngine.Mathf.Clamp(Scheduler.DESIRED_NUM_THREADS, 0, workers.Length);
 				for (int i = 0; i < l; i++) workers[i].waiter.Set();
+			}
+
+			public int GetNumberWorkers() {
+				return workers.Length;
 			}
 
 			

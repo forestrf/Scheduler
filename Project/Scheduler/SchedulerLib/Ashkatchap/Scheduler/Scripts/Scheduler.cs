@@ -18,7 +18,6 @@ namespace Ashkatchap.Updater {
 			}
 			Scheduler.updater = updater;
 			executor = new FrameUpdater.WorkerManager(updater);
-			Logger.Info("Executor Created");
 		}
 		public static void MultithreadingEnd() {
 			if (executor == null) {
@@ -26,7 +25,6 @@ namespace Ashkatchap.Updater {
 				return;
 			}
 			executor.OnDestroy();
-			Logger.Info("Executor Destroyed");
 			executor = null;
 		}
 
