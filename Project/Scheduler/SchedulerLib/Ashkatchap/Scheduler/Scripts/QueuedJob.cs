@@ -27,7 +27,7 @@ namespace Ashkatchap.Updater {
 
 
 		public QueuedJob() {
-			indices = new Range[Scheduler.ProcessorCount];
+			indices = new Range[Scheduler.AVAILABLE_CORES];
 			for (int i = 0; i < indices.Length; i++) indices[i] = new Range();
 		}
 
@@ -41,8 +41,19 @@ namespace Ashkatchap.Updater {
 			temporalId = lastId++;
 			this.priority = priority;
 			Thread.MemoryBarrier();
-			for (int i = 0; i < indices.Length - 1; i++) indices[i].Set(0, 1, 0);
-			indices[indices.Length - 1].Set(0, 0, length - 1);
+			
+			int nCores = Scheduler.CORES_IN_USE;
+			int nCoresInv = Scheduler.AVAILABLE_CORES - nCores;
+			int range = length / nCores;
+			for (int i = indices.Length - 1; i >= nCoresInv; i--) {
+				int start = i * range;
+				int end = (i + 1) * range - 1;
+				if (i == indices.Length - 1) end = length - 1;
+				indices[i].Set(start, start, end);
+			}
+
+
+
 			doneIndices = 0;
 			Thread.MemoryBarrier();
 			this.length = length;
