@@ -4,7 +4,7 @@ using System.Threading;
 using UnityEngine.Profiling;
 
 namespace Ashkatchap.Updater {
-	public partial class FrameUpdater {
+	internal partial class FrameUpdater {
 		public class WorkerManager {
 			internal readonly JobArray[] jobsToDo; // Only "thread" writes, others only read
 			private readonly Worker[] workers;

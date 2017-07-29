@@ -7,9 +7,8 @@
 
 using System;
 using System.Diagnostics;
-using UnityEngine;
 
-public static class Logger {
+internal static class Logger {
 #if LOGLEVEL_TRACE_VERBOSE || LOGLEVEL_TRACE || LOGLEVEL_DEBUG || LOGLEVEL_INFO || LOGLEVEL_WARN || LOGLEVEL_ERROR
 	public static void Error(string message) {
 		Console.WriteLine(message);

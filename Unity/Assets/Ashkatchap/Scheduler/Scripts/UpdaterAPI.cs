@@ -2,7 +2,7 @@
 using UnityEngine;
 
 namespace Ashkatchap.Updater {
-	public static class Scheduler {
+	public static class UpdaterAPI {
 		static FrameUpdater Instance;
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -17,19 +17,19 @@ namespace Ashkatchap.Updater {
 			}
 		}
 
-		public static FrameUpdater.RecurrentReference AddRecurrentUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
-			return Instance.AddRecurrentUpdateCallbackInstance(method, queue, order);
+		public static UpdateReferenceQ AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
+			return Instance.AddUpdateCallback(method, queue, order);
 		}
-		public static void RemoveRecurrentUpdateCallback(FrameUpdater.RecurrentReference reference) {
-			Instance.RemoveRecurrentUpdateCallbackInstance(reference);
-		}
-
-		public static void QueueUpdateCallback(QueueOrder queue, Action method) {
-			Instance.QueueUpdateCallbackInstance(queue, method);
+		public static void RemoveUpdateCallback(UpdateReferenceQ reference) {
+			Instance.RemoveUpdateCallback(reference);
 		}
 
-		public static FrameUpdater.JobReference QueueMultithreadJob(FrameUpdater.Job callback, ushort numberOfIterations, byte priority = 127) {
-			return Instance.QueueMultithreadJobInstance(callback, numberOfIterations, priority);
+		public static void QueueCallback(QueueOrder queue, Action method) {
+			Instance.QueueCallback(queue, method);
+		}
+
+		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = 127) {
+			return Scheduler.QueueMultithreadJob(callback, numberOfIterations, priority);
 		}
 	}
 }

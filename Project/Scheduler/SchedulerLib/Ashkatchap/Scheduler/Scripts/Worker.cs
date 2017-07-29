@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 
 namespace Ashkatchap.Updater {
-	public partial class FrameUpdater {
+	internal partial class FrameUpdater {
 		private class Worker {
 			private readonly Thread thread;
 			internal readonly AutoResetEvent waiter = new AutoResetEvent(false);
