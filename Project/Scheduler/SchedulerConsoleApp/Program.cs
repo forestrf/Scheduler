@@ -7,7 +7,7 @@ public class Program {
 	public static void Main(string[] args) {
 		updater = new Updater();
 		Scheduler.MultithreadingStart(updater);
-		
+
 		Program p = new Program();
 		p.Awake();
 		p.Start();
@@ -21,8 +21,8 @@ public class Program {
 	}
 
 	UpdateReference[] nothingUpdate;
-	UpdateReference[] firstUpdate;
-	UpdateReference[] secondUpdate;
+	UpdateReference AU, DU;
+	UpdateReference[] BU, CU;
 	JobReference[] jobs;
 
 	public int arraySize = 100;
@@ -34,57 +34,82 @@ public class Program {
 	public int workPerIteration = 0;
 
 	Action DoNothingCached;
-	Action UpdateMethod1Cached;
-	Action UpdateMethod2Cached;
+	Action cachedA, cachedB, cachedC, cachedD;
 	Job MultithreadDoNothingCached;
 	private void Awake() {
 		DoNothingCached = DoNothing;
-		UpdateMethod1Cached = UpdateMethod1;
-		UpdateMethod2Cached = UpdateMethod2;
+		cachedA = A;
+		cachedB = B;
+		cachedC = C;
+		cachedD = D;
 		MultithreadDoNothingCached = MultithreadDoNothing;
 	}
-	
+
+	public static int[] test;
+
+	public int AllTrueInTest() {
+		int fails = 0;
+		for (int i = 0; i < test.Length; i++) {
+			if (test[i] != arraySize) {
+				Console.WriteLine(i);
+				fails++;
+			}
+		}
+		return fails;
+	}
+
 	void Start() {
 		nothingUpdate = new UpdateReference[arraySize];
-		firstUpdate = new UpdateReference[arraySize];
-		secondUpdate = new UpdateReference[arraySize];
+		BU = new UpdateReference[arraySize];
+		CU = new UpdateReference[arraySize];
 		jobs = new JobReference[arraySize];
-		for (int i = 0; i < firstUpdate.Length; i++) {
+		test = new int[multithreadIterations];
+		AU = updater.AddUpdateCallback(cachedA, 126);
+		for (int i = 0; i < BU.Length; i++) {
 			nothingUpdate[i] = updater.AddUpdateCallback(DoNothingCached, 126);
-			firstUpdate[i] = updater.AddUpdateCallback(UpdateMethod1Cached, 127);
-			secondUpdate[i] = updater.AddUpdateCallback(UpdateMethod2Cached, 128);
+			BU[i] = updater.AddUpdateCallback(cachedB, 127);
+			CU[i] = updater.AddUpdateCallback(cachedC, 128);
 		}
+		DU = updater.AddUpdateCallback(cachedD, 129);
 	}
 	void End() {
-		for (int i = 0; i < firstUpdate.Length; i++) {
+		updater.RemoveUpdateCallback(AU);
+		for (int i = 0; i < BU.Length; i++) {
 			updater.RemoveUpdateCallback(nothingUpdate[i]);
-			updater.RemoveUpdateCallback(firstUpdate[i]);
-			updater.RemoveUpdateCallback(secondUpdate[i]);
+			updater.RemoveUpdateCallback(BU[i]);
+			updater.RemoveUpdateCallback(CU[i]);
 		}
+		updater.RemoveUpdateCallback(DU);
+	}
+
+	void A() {
+		Scheduler.FORCE_SINGLE_THREAD = singleThread;
+		Scheduler.DESIRED_NUM_CORES = NUM_THREADS;
+		for (int i = 0; i < test.Length; i++) System.Threading.Interlocked.Exchange(ref test[i], 0);
 	}
 
 	int i = 0;
-	void UpdateMethod1() {
-		Scheduler.FORCE_SINGLE_THREAD = singleThread;
-		Scheduler.DESIRED_NUM_CORES = NUM_THREADS;
-		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, 127, minimumRangeToSteal);
-		i = (i + 1) % firstUpdate.Length;
+	void B() {
+		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, Scheduler.DEFAULT_PRIORITY, minimumRangeToSteal);
+		i = (i + 1) % BU.Length;
+	}
+	void C() {
+		jobs[i].WaitForFinish();
+		i = (i + 1) % BU.Length;
 	}
 
-	void UpdateMethod2() {
-		jobs[i].WaitForFinish();
-
-		i = (i + 1) % firstUpdate.Length;
+	void D() {
+		if (AllTrueInTest() > 0) {
+			Console.WriteLine("WTF");
+		}
 	}
 
 	void DoNothing() {
 	}
 
 	void MultithreadDoNothing(int index) {
-
 		int ignore = 1;
 		for (int i = 0; i < workPerIteration; i++) ignore += i % ignore;
-
-		//Thread.Sleep(1);
+		System.Threading.Interlocked.Increment(ref test[index]);
 	}
 }

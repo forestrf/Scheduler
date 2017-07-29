@@ -9,7 +9,7 @@ namespace Ashkatchap.Shared.Collections {
 	public class ThreadSafeRingBuffer_MultiProducer_SingleConsumer<T> where T : class {
 		private readonly T[] _entries;
 		private int _consumerCursor = 0;
-		private Volatile.PaddedInt _producerCursor = new Volatile.PaddedInt();
+		private Volatile.PaddedVolatileInt _producerCursor = new Volatile.PaddedVolatileInt();
 		
 		public ThreadSafeRingBuffer_MultiProducer_SingleConsumer(ushort capacity) {
 			_entries = new T[capacity];
@@ -58,9 +58,23 @@ namespace Ashkatchap.Shared.Collections {
 		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
 		public struct PaddedInt {
 			[FieldOffset(CacheLineSize)]
-			public volatile int value;
+			public int value;
 
 			public PaddedInt(int value) {
+				this.value = value;
+			}
+
+			public override string ToString() {
+				return value.ToString();
+			}
+		}
+
+		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
+		public struct PaddedVolatileInt {
+			[FieldOffset(CacheLineSize)]
+			public volatile int value;
+
+			public PaddedVolatileInt(int value) {
 				this.value = value;
 			}
 

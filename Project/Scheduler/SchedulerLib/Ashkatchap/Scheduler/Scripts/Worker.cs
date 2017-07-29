@@ -26,7 +26,6 @@ namespace Ashkatchap.Updater {
 				thread.Abort();
 			}
 			
-			QueuedJob lastJob;
 			void ThreadMethod() {
 				while (true) {
 					while (Scheduler.FORCE_SINGLE_THREAD) {
@@ -41,10 +40,6 @@ namespace Ashkatchap.Updater {
 					QueuedJob[] array;
 					for (int i = 0; p < executor.jobsToDo.Length && i < (array = executor.jobsToDo[p].array).Length; ) {
 						var queuedJob = array[i++];
-						if (lastJob != queuedJob) {
-							if (lastJob != null) lastJob.Commit(index);
-							lastJob = queuedJob;
-						}
 						if (queuedJob == null) {
 							i = 0;
 							p++;

@@ -8,22 +8,20 @@ namespace Ashkatchap.Updater {
 	internal class QueuedJob {
 		private static int lastId = 0;
 		private static int CLEAN_STATE = new Range.PaddedRange(1, 0).state;
-		internal AutoResetEvent finishEvent = new AutoResetEvent(false);
 
-		private int hasErrors;
 
 		#region EXECUTOR_RW WORKER_RW
-		private Job job;
-		private volatile int doneIndices;
+		private int hasErrors;
 		private int length;
+		private Job job;
 		#endregion
 
-		private readonly Range[] indices;
-		private readonly Volatile.PaddedInt[] executedIndicesPerThread;
+		private readonly Volatile.PaddedInt[] doneIndices;
+		private readonly Range[] todoIndices;
 
 		#region EXECUTOR_RW WORKER_R
-		private int temporalId;
 		private int minimumRangeToSteal = 0;
+		private int temporalId;
 		#endregion
 
 		#region EXECUTOR_RW
@@ -32,35 +30,32 @@ namespace Ashkatchap.Updater {
 
 
 		public QueuedJob() {
-			indices = new Range[Scheduler.AVAILABLE_CORES];
-			for (int i = 0; i < indices.Length; i++) indices[i] = new Range();
-			executedIndicesPerThread = new Volatile.PaddedInt[Scheduler.AVAILABLE_CORES];
+			todoIndices = new Range[Scheduler.AVAILABLE_CORES];
+			doneIndices = new Volatile.PaddedInt[Scheduler.AVAILABLE_CORES];
+			for (int i = 0; i < todoIndices.Length; i++) todoIndices[i] = new Range();
 		}
 
 
 		internal void Init(Job job, ushort length, byte priority, ushort minimumRangeToSteal) {
 			Logger.WarnAssert(!Scheduler.InMainThread(), "Init can only be called from the main thread");
 			if (!Scheduler.InMainThread()) return;
-
-			finishEvent.Reset();
-
+			
 			Interlocked.Exchange(ref this.job, job);
 			Interlocked.Exchange(ref this.temporalId, lastId++);
 			Interlocked.Exchange(ref this.priority, priority);
 			Interlocked.Exchange(ref this.minimumRangeToSteal, minimumRangeToSteal);
 			Interlocked.Exchange(ref this.hasErrors, 0);
 
-			if (length == 0) indices[0].range.Set(1, 0);
-			else indices[0].range.Set(0, (ushort) (length - 1));
+			if (length == 0) todoIndices[0].range.Set(1, 0);
+			else todoIndices[0].range.Set(0, (ushort) (length - 1));
 
-			for (int i = 1; i < indices.Length; i++) {
-				indices[i].range.Set(1, 0);
+			for (int i = 1; i < todoIndices.Length; i++) {
+				todoIndices[i].range.Set(1, 0);
 			}
-			for (int i = 0; i < executedIndicesPerThread.Length; i++) {
-				Interlocked.Exchange(ref executedIndicesPerThread[i].value, 0);
+			for (int i = 0; i < doneIndices.Length; i++) {
+				Interlocked.Exchange(ref doneIndices[i].value, 0);
 			}
-			
-			this.doneIndices = 0; // volatile
+
 			Interlocked.Exchange(ref this.length, length);
 
 			//Logger.TraceVerbose("[" + temporalId + "] job created");
@@ -68,7 +63,7 @@ namespace Ashkatchap.Updater {
 
 
 		internal bool TryExecute(int workerIndex, ref KeyValuePair<int, int>[] tmp) {
-			var rangeWrapper = indices[workerIndex];
+			var rangeWrapper = todoIndices[workerIndex];
 
 			Range.PaddedRange rangeToExecute = rangeWrapper.range;
 
@@ -79,15 +74,15 @@ namespace Ashkatchap.Updater {
 				
 
 				// Prepare tmp array
-				if (tmp == null || tmp.Length != indices.Length - 1) {
-					tmp = new KeyValuePair<int, int>[indices.Length - 1];
+				if (tmp == null || tmp.Length != todoIndices.Length - 1) {
+					tmp = new KeyValuePair<int, int>[todoIndices.Length - 1];
 				}
 
 				// First we fetch and sort the remaining ranges
 				bool foundRange = false;
-				for (int i = 0, j = 0; i < indices.Length; i++) {
+				for (int i = 0, j = 0; i < todoIndices.Length; i++) {
 					if (i == workerIndex) continue;
-					int range = indices[i].range.GetRemainingRange();
+					int range = todoIndices[i].range.GetRemainingRange();
 					tmp[j++] = new KeyValuePair<int, int>(i, range);
 					if (range > minimumRangeToSteal) foundRange = true;
 				}
@@ -99,7 +94,7 @@ namespace Ashkatchap.Updater {
 					bool rangeObtained = false;
 					for (int i = 0; i < tmp.Length; i++) {
 						Range.PaddedRange obtainedRange;
-						if (indices[tmp[i].Key].GetFreeRange(out obtainedRange, (ushort) minimumRangeToSteal)) {
+						if (todoIndices[tmp[i].Key].GetFreeRange(out obtainedRange, (ushort) minimumRangeToSteal)) {
 							// We were able to get a new range
 							Logger.TraceVerbose("[" + temporalId + "] Range obtained: " + obtainedRange);
 							rangeToExecute = obtainedRange;
@@ -127,25 +122,13 @@ namespace Ashkatchap.Updater {
 				Destroy();
 				return false;
 			}
-			executedIndicesPerThread[workerIndex].value++;
-									
+			Interlocked.Increment(ref doneIndices[workerIndex].value);
+
 			return true;
 		}
 
 		bool ReturnFinished(int workerIndex) {
-			Commit(workerIndex);
 			return false;
-		}
-
-		public void Commit(int workerIndex) {
-			if (executedIndicesPerThread[workerIndex].value > 0) {
-				Interlocked.Add(ref doneIndices, executedIndicesPerThread[workerIndex].value);
-				if (doneIndices == length) {
-					Logger.TraceVerbose("[" + temporalId + "] job finished");
-					finishEvent.Set();
-				}
-				executedIndicesPerThread[workerIndex].value = 0;
-			}
 		}
 
 		// DESC order
@@ -164,15 +147,16 @@ namespace Ashkatchap.Updater {
 			}
 			Scheduler.executor.SetJobToAllThreads(this);
 			while (TryExecute(0, ref tmpForMainThread)) ;
-			while (!IsFinished()) finishEvent.WaitOne();
+			while (!IsFinished()) Thread.Sleep(0);
 		}
 
 		public void Destroy() {
-			Interlocked.Exchange(ref doneIndices, length);
-			finishEvent.Set();
+			for (int i = 0; i < doneIndices.Length; i++) {
+				Interlocked.Exchange(ref doneIndices[i].value, int.MaxValue);
+			}
 
-			for (int i = 0; i < indices.Length; i++) {
-				Interlocked.Exchange(ref indices[i].range.state, CLEAN_STATE);
+			for (int i = 0; i < todoIndices.Length; i++) {
+				Interlocked.Exchange(ref todoIndices[i].range.state, CLEAN_STATE);
 			}
 		}
 
@@ -180,8 +164,18 @@ namespace Ashkatchap.Updater {
 			return hasErrors == 1;
 		}
 
+		private int GetFinishedCount() {
+			int count = 0;
+			for (int i = 0; i < doneIndices.Length; i++) {
+				count += doneIndices[i].value;
+			}
+			return count;
+		}
+
 		public bool IsFinished() {
-			return doneIndices == length;
+			int count = GetFinishedCount();
+			Logger.ErrorAssert(count > length, "[" + temporalId + "] Expected done indices (" + length + "), counted (" + count + ")");
+			return count == length;
 		}
 
 		public void ChangePriority(byte newPriority) {
