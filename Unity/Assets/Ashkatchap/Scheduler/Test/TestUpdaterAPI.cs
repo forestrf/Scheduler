@@ -16,7 +16,9 @@ public class TestUpdaterAPI : MonoBehaviour {
 
 	private bool started = false;
 	void OnEnable() {
-		nothingUpdate = new UpdateReferenceQ[arraySize];
+		if (nothingUpdate == null || nothingUpdate.Length != arraySize) {
+			nothingUpdate = new UpdateReferenceQ[arraySize];
+		}
 		for (int i = 0; i < nothingUpdate.Length; i++) {
 			nothingUpdate[i] = UpdaterAPI.AddUpdateCallback(DoNothingCached, QueueOrder.PostUpdate);
 		}

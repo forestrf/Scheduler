@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading;
 
 namespace Ashkatchap.Updater {
@@ -9,7 +8,7 @@ namespace Ashkatchap.Updater {
 			internal readonly AutoResetEvent waiter = new AutoResetEvent(false);
 			private WorkerManager executor;
 			private int index;
-			private KeyValuePair<int, int>[] tmpForMainThread;
+			private QueuedJob.IndexCount[] tmpForMainThread;
 
 			public Worker(WorkerManager executor, int index) {
 				this.executor = executor;
