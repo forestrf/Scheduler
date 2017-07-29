@@ -215,7 +215,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c83828d706fead4e81217be4f19b309, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  arraySize: 50
+  arraySize: 10000
+  count: 0
 --- !u!4 &2086083114
 Transform:
   m_ObjectHideFlags: 0
@@ -244,7 +245,7 @@ MonoBehaviour:
   multithreadIterations: 100
   singleThread: 0
   NUM_THREADS: 8
-  workPerIteration: 10000
+  workPerIteration: 0
 --- !u!1 &2124020618
 GameObject:
   m_ObjectHideFlags: 0

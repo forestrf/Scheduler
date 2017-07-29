@@ -1,10 +1,9 @@
 ﻿using Ashkatchap.Updater;
 using System;
 using UnityEngine;
-using UnityEngine.Profiling;
+//using UnityEngine.Profiling;
 
 public class TestMultithreadAPI : MonoBehaviour {
-	UpdateReferenceQ[] nothingUpdate;
 	UpdateReferenceQ[] firstUpdate;
 	UpdateReferenceQ[] secondUpdate;
 	JobReference[] jobs;
@@ -15,13 +14,11 @@ public class TestMultithreadAPI : MonoBehaviour {
 	public int NUM_THREADS = 8;
 
 	public int workPerIteration = 10000;
-
-	Action DoNothingCached;
+	
 	Action UpdateMethod1Cached;
 	Action UpdateMethod2Cached;
 	Job MultithreadDoNothingCached;
 	private void Awake() {
-		DoNothingCached = DoNothing;
 		UpdateMethod1Cached = UpdateMethod1;
 		UpdateMethod2Cached = UpdateMethod2;
 		MultithreadDoNothingCached = MultithreadDoNothing;
@@ -29,12 +26,10 @@ public class TestMultithreadAPI : MonoBehaviour {
 
 	private bool started = false;
 	void OnEnable() {
-		nothingUpdate = new UpdateReferenceQ[arraySize];
 		firstUpdate = new UpdateReferenceQ[arraySize];
 		secondUpdate = new UpdateReferenceQ[arraySize];
 		jobs = new JobReference[arraySize];
 		for (int i = 0; i < firstUpdate.Length; i++) {
-			nothingUpdate[i] = UpdaterAPI.AddUpdateCallback(DoNothingCached, QueueOrder.Update, 126);
 			firstUpdate[i] = UpdaterAPI.AddUpdateCallback(UpdateMethod1Cached, QueueOrder.Update, 127);
 			secondUpdate[i] = UpdaterAPI.AddUpdateCallback(UpdateMethod2Cached, QueueOrder.Update, 128);
 		}
@@ -42,7 +37,6 @@ public class TestMultithreadAPI : MonoBehaviour {
 	}
 	void OnDisable() {
 		for (int i = 0; i < firstUpdate.Length; i++) {
-			UpdaterAPI.RemoveUpdateCallback(nothingUpdate[i]);
 			UpdaterAPI.RemoveUpdateCallback(firstUpdate[i]);
 			UpdaterAPI.RemoveUpdateCallback(secondUpdate[i]);
 		}
@@ -74,24 +68,19 @@ public class TestMultithreadAPI : MonoBehaviour {
 	void UpdateMethod1() {
 		Scheduler.FORCE_SINGLE_THREAD = singleThread;
 		Scheduler.DESIRED_NUM_CORES = NUM_THREADS;
-		Profiler.BeginSample("Add Multithread");
+		//Profiler.BeginSample("Add Multithread");
 		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations);
 		i = (i + 1) % firstUpdate.Length;
-		Profiler.EndSample();
+		//Profiler.EndSample();
 	}
 		
 	void UpdateMethod2() {
-		Profiler.BeginSample("Wait Multithread");
+		//Profiler.BeginSample("Wait Multithread");
 
 		jobs[i].WaitForFinish();
 
 		i = (i + 1) % firstUpdate.Length;
-		Profiler.EndSample();
-	}
-
-	void DoNothing() {
-		Profiler.BeginSample("Nothing");
-		Profiler.EndSample();
+		//Profiler.EndSample();
 	}
 
 	void MultithreadDoNothing(int index) {

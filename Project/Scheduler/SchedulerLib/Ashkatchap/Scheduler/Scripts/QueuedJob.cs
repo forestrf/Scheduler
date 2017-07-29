@@ -39,7 +39,7 @@ namespace Ashkatchap.Updater {
 		internal void Init(Job job, ushort length, byte priority, ushort minimumRangeToSteal) {
 			Logger.WarnAssert(!Scheduler.InMainThread(), "Init can only be called from the main thread");
 			if (!Scheduler.InMainThread()) return;
-			
+
 			Interlocked.Exchange(ref this.job, job);
 			Interlocked.Exchange(ref this.temporalId, lastId++);
 			Interlocked.Exchange(ref this.priority, priority);
@@ -71,7 +71,7 @@ namespace Ashkatchap.Updater {
 			// get an index to execute
 			if (!rangeWrapper.range.GetIndexAndIncrease(out rangeToExecute.index)) {
 				// This range is finished so we want a new range, if there is any available
-				
+
 
 				// Prepare tmp array
 				if (tmp == null || tmp.Length != todoIndices.Length - 1) {
@@ -86,10 +86,10 @@ namespace Ashkatchap.Updater {
 					tmp[j++] = new KeyValuePair<int, int>(i, range);
 					if (range > minimumRangeToSteal) foundRange = true;
 				}
-				
+
 				if (foundRange) {
 					// sort by range
-					Array.Sort(tmp, sortByRange);
+					HeapSort(tmp);
 
 					bool rangeObtained = false;
 					for (int i = 0; i < tmp.Length; i++) {
@@ -131,11 +131,6 @@ namespace Ashkatchap.Updater {
 			return false;
 		}
 
-		// DESC order
-		private static Comparison<KeyValuePair<int, int>> sortByRange = (a, b) => {
-			return b.Value - a.Value;
-		};
-
 		private KeyValuePair<int, int>[] tmpForMainThread;
 		public void WaitForFinish() {
 			Logger.ErrorAssert(!Scheduler.InMainThread(), "WaitForFinish can only be called from the main thread");
@@ -174,7 +169,7 @@ namespace Ashkatchap.Updater {
 
 		public bool IsFinished() {
 			int count = GetFinishedCount();
-			Logger.ErrorAssert(count > length, "[" + temporalId + "] Expected done indices (" + length + "), counted (" + count + ")");
+			if (count > length) Logger.Error("[" + temporalId + "] Expected done indices (" + length + "), counted (" + count + ")");
 			return count == length;
 		}
 
@@ -204,7 +199,7 @@ namespace Ashkatchap.Updater {
 
 		public class Range {
 			public PaddedRange range;
-			
+
 			public override string ToString() {
 				return range.ToString();
 			}
@@ -271,7 +266,7 @@ namespace Ashkatchap.Updater {
 						++toSet.index;
 
 						Logger.ErrorAssert(toSet.index == 0, "WTF overflow? when? why?");
-						
+
 						if (TTAS(ref state, toSet.state, comparand, out toSet.state)) {
 							indexToExecute = toSet.index;
 							return true;
@@ -303,6 +298,45 @@ namespace Ashkatchap.Updater {
 				public override string ToString() {
 					return "{I:" + index + ", LI:" + lastIndex + "}";
 				}
+			}
+		}
+
+		// https://begeeben.wordpress.com/2012/08/21/heap-sort-in-c/
+		public static void HeapSort(KeyValuePair<int, int>[] input) {
+			//Build-Max-Heap
+			int heapSize = input.Length;
+			for (int p = (heapSize - 1) / 2; p >= 0; p--)
+				MaxHeapify(input, heapSize, p);
+
+			for (int i = input.Length - 1; i > 0; i--) {
+				//Swap
+				var temp = input[i];
+				input[i] = input[0];
+				input[0] = temp;
+
+				heapSize--;
+				MaxHeapify(input, heapSize, 0);
+			}
+		}
+		private static void MaxHeapify(KeyValuePair<int, int>[] input, int heapSize, int index) {
+			int left = (index + 1) * 2 - 1;
+			int right = (index + 1) * 2;
+			int smallest = 0;
+
+			if (left < heapSize && input[left].Value < input[index].Value)
+				smallest = left;
+			else
+				smallest = index;
+
+			if (right < heapSize && input[right].Value < input[smallest].Value)
+				smallest = right;
+
+			if (smallest != index) {
+				var temp = input[index];
+				input[index] = input[smallest];
+				input[smallest] = temp;
+
+				MaxHeapify(input, heapSize, smallest);
 			}
 		}
 	}
