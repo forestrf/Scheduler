@@ -241,8 +241,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23b781267dc80264f979ae45ea1426d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  arraySize: 10000
-  multithreadIterations: 100
+  arraySize: 100
+  multithreadIterations: 1000
   singleThread: 0
   NUM_THREADS: 8
   workPerIteration: 0

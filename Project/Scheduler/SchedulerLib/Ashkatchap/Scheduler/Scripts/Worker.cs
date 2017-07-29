@@ -8,7 +8,6 @@ namespace Ashkatchap.Updater {
 			internal readonly AutoResetEvent waiter = new AutoResetEvent(false);
 			private WorkerManager executor;
 			private int index;
-			private QueuedJob.IndexCount[] tmpForMainThread;
 
 			public Worker(WorkerManager executor, int index) {
 				this.executor = executor;
@@ -32,27 +31,28 @@ namespace Ashkatchap.Updater {
 					}
 
 					bool workDone = false;
-					int p = 0;
+					int p = 0, i = 0;
 
 					// The executor may replace this array from another thread
 					// Because of that, we cache a reference to the array
 					QueuedJob[] array;
-					for (int i = 0; p < executor.jobsToDo.Length && i < (array = executor.jobsToDo[p].array).Length; ) {
-						var queuedJob = array[i++];
+					do {
+						array = executor.jobsToDo[p].array;
+						var queuedJob = i < array.Length ? array[i++] : null;
 						if (queuedJob == null) {
 							i = 0;
 							p++;
 							continue;
 						}
-							
-						while (queuedJob.TryExecute(index, ref tmpForMainThread)) {
+
+						while (queuedJob.TryExecute(index)) {
 							workDone = true;
 							if (!IsUpToDate()) {
 								p = i = 0;
 								break;
 							}
 						}
-					}
+					} while (p < executor.jobsToDo.Length);
 
 					// We want to check for work to do until we make a full inspection of jobsToDo and find nothing 
 					if (!workDone) {

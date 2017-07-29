@@ -6,7 +6,7 @@ namespace Ashkatchap.Updater {
 	public static class Scheduler {
 		public const byte DEFAULT_PRIORITY = 127;
 		public static bool FORCE_SINGLE_THREAD = false;
-		public static readonly int AVAILABLE_CORES = Math.Min(Environment.ProcessorCount, 64); // I don't remember about this limit
+		public static readonly int AVAILABLE_CORES = Environment.ProcessorCount;
 		public static int DESIRED_NUM_CORES = AVAILABLE_CORES;
 		public static int CORES_IN_USE {
 			get { return UnityEngine.Mathf.Clamp(DESIRED_NUM_CORES, 1, AVAILABLE_CORES); }

@@ -8,6 +8,13 @@ namespace Ashkatchap.Updater {
 		private static int lastId = 0;
 		private static int CLEAN_STATE = new Range.SimpleRange(1, 0).state;
 
+		// Temporal arrays for each worker (and main thread) to sort the remaining ranges before trying to steal one
+		private static IndexCountArrPadded[] tmpRangeCounters = PrepareTmpRangeCounters();
+		private static IndexCountArrPadded[] PrepareTmpRangeCounters() {
+			var arr = new IndexCountArrPadded[Scheduler.AVAILABLE_CORES];
+			for (int i = 0; i < arr.Length; i++) arr[i].array = new IndexCount[Scheduler.AVAILABLE_CORES - 1];
+			return arr;
+		}
 
 		#region EXECUTOR_RW WORKER_RW
 		private int hasErrors;
@@ -61,21 +68,14 @@ namespace Ashkatchap.Updater {
 		}
 
 
-		internal bool TryExecute(int workerIndex, ref IndexCount[] tmp) {
-			var rangeWrapper = todoIndices[workerIndex];
-
-			Range.SimpleRange rangeToExecute = new Range.SimpleRange(ref rangeWrapper.range.value);
-
-
+		internal bool TryExecute(int workerIndex) {
+			Range.SimpleRange rangeToExecute = new Range.SimpleRange(ref todoIndices[workerIndex].range.value);
+			
 			// get an index to execute
-			if (!rangeWrapper.range.value.GetIndexAndIncrease(out rangeToExecute.index)) {
+			if (!todoIndices[workerIndex].range.value.GetIndexAndIncrease(out rangeToExecute.index)) {
 				// This range is finished so we want a new range, if there is any available
 
-
-				// Prepare tmp array
-				if (tmp == null || tmp.Length != todoIndices.Length - 1) {
-					tmp = new IndexCount[todoIndices.Length - 1];
-				}
+				var tmp = tmpRangeCounters[workerIndex].array;
 
 				// First we fetch and sort the remaining ranges
 				bool foundRange = false;
@@ -100,7 +100,7 @@ namespace Ashkatchap.Updater {
 
 							// Next set state, that can change by all threads. Right now only this thread wants to change it
 							++obtainedRange.index;
-							Interlocked.Exchange(ref rangeWrapper.range.value.state, obtainedRange.state);
+							Interlocked.Exchange(ref todoIndices[workerIndex].range.value.state, obtainedRange.state);
 							rangeObtained = true;
 							break;
 						}
@@ -130,7 +130,6 @@ namespace Ashkatchap.Updater {
 			return false;
 		}
 
-		private IndexCount[] tmpForMainThread;
 		public void WaitForFinish() {
 			Logger.ErrorAssert(!Scheduler.InMainThread(), "WaitForFinish can only be called from the main thread");
 			if (!Scheduler.InMainThread()) return;
@@ -140,7 +139,7 @@ namespace Ashkatchap.Updater {
 				return;
 			}
 			Scheduler.executor.SetJobToAllThreads(this);
-			while (TryExecute(0, ref tmpForMainThread)) ;
+			while (TryExecute(0)) ;
 			while (!IsFinished()) Thread.Sleep(0);
 		}
 
@@ -206,7 +205,7 @@ namespace Ashkatchap.Updater {
 			public bool GetFreeRange(out SimpleRange obtainedRange, ushort minimumRange = 0) {
 				obtainedRange.state = 0;
 				int availableRange;
-				SimpleRange copiedRange = new SimpleRange(ref range.value);
+				SimpleRange copiedRange = new SimpleRange(ref range.value); 
 				while ((availableRange = copiedRange.GetRemainingRange()) > minimumRange) {
 					var tmpCopied = copiedRange; // debug
 
@@ -363,6 +362,13 @@ namespace Ashkatchap.Updater {
 				this.index = index;
 				this.count = count;
 			}
+		}
+
+		private const int CacheLineSize = 64;
+		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
+		internal struct IndexCountArrPadded {
+			[FieldOffset(CacheLineSize)]
+			public IndexCount[] array;
 		}
 	}
 }
