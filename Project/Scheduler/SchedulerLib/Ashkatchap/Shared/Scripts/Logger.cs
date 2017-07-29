@@ -1,9 +1,9 @@
 ﻿//#define LOGLEVEL_TRACE_VERBOSE
 //#define LOGLEVEL_TRACE
 //#define LOGLEVEL_DEBUG
-#define LOGLEVEL_INFO
+//#define LOGLEVEL_INFO
 //#define LOGLEVEL_WARN
-//#define LOGLEVEL_ERROR
+#define LOGLEVEL_ERROR
 
 using System;
 using System.Diagnostics;
