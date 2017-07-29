@@ -4,6 +4,7 @@ namespace Ashkatchap.Updater {
 	public delegate void Job(int index);
 
 	public static class Scheduler {
+		public const byte DEFAULT_PRIORITY = 127;
 		public static bool FORCE_SINGLE_THREAD = false;
 		public static readonly int AVAILABLE_CORES = Math.Min(Environment.ProcessorCount, 64); // I don't remember about this limit
 		public static int DESIRED_NUM_CORES = AVAILABLE_CORES;
@@ -31,8 +32,8 @@ namespace Ashkatchap.Updater {
 			executor = null;
 		}
 
-		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = 127) {
-			return executor.QueueMultithreadJobInstance(callback, numberOfIterations, priority);
+		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = DEFAULT_PRIORITY, ushort minimumRangeToSteal = 0) {
+			return executor.QueueMultithreadJobInstance(callback, numberOfIterations, priority, minimumRangeToSteal);
 		}
 
 		public static bool InMainThread() {

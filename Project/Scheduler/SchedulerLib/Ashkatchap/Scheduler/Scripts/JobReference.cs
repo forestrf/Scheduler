@@ -8,11 +8,12 @@
 			this.id = job != null ? job.GetId() : -1;
 		}
 
-		public void WaitForFinish() {
+		public bool WaitForFinish() {
 			Logger.WarnAssert(!Scheduler.InMainThread(), "WaitForFinish can only be called from the main thread");
-			if (!Scheduler.InMainThread()) return;
-			if (job == null) return;
+			if (!Scheduler.InMainThread()) return true;
+			if (job == null) return true;
 			if (job.CheckId(id)) job.WaitForFinish();
+			return !job.HasErrors();
 		}
 
 		public void Destroy() {

@@ -22,7 +22,7 @@ namespace Ashkatchap.Updater {
 
 				int numWorkers = Math.Max(1, Scheduler.AVAILABLE_CORES - 1);
 				workers = new Worker[numWorkers];
-				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i, numWorkers);
+				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i + 1);
 
 				updater.AddUpdateCallback(Cleaner, 255);
 			}
@@ -34,7 +34,7 @@ namespace Ashkatchap.Updater {
 			
 			private void SignalWorkers() {
 				int l = Scheduler.CORES_IN_USE - 1;
-				for (int i = 0; i < l; i++) workers[i].waiter.Set();
+				for (int i = 0; i < l; i++) workers[workers.Length - 1 - i].waiter.Set();
 			}
 
 			public int GetNumberWorkers() {
@@ -43,7 +43,7 @@ namespace Ashkatchap.Updater {
 
 			
 			
-			public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority) {
+			public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority, ushort minimumRangeToSteal) {
 				Logger.WarnAssert(!Scheduler.InMainThread(), "QueueMultithreadJobInstance can only be called from the main thread");
 				if (!Scheduler.InMainThread()) return default(JobReference);
 
@@ -54,7 +54,7 @@ namespace Ashkatchap.Updater {
 					return new JobReference(null);
 				} else {
 					var queuedJob = pool.Count > 0 ? pool.ExtractLast() : new QueuedJob();
-					queuedJob.Init(job, numberOfIterations, priority);
+					queuedJob.Init(job, numberOfIterations, priority, minimumRangeToSteal);
 
 					jobsToDo[queuedJob.priority].AddAuto(queuedJob.priority, queuedJob);
 					lastActionStamp++;

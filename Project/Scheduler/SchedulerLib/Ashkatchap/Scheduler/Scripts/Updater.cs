@@ -45,7 +45,7 @@ namespace Ashkatchap.Updater {
 
 		
 
-		public UpdateReference AddUpdateCallback(Action method, byte order = 127) {
+		public UpdateReference AddUpdateCallback(Action method, byte order = Scheduler.DEFAULT_PRIORITY) {
 			var aw = new ActionWrapped(nextRecurrentId++, method);
 			recurrentCallbacks[order].Add(aw);
 			return new UpdateReference(aw.id, order);

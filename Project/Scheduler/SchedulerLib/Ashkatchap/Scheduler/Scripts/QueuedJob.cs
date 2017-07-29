@@ -1,151 +1,151 @@
-﻿#pragma warning disable 420
-
+﻿using Ashkatchap.Shared.Collections;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Ashkatchap.Updater {
 	internal class QueuedJob {
 		private static int lastId = 0;
+		private static int CLEAN_STATE = new Range.PaddedRange(1, 0).state;
+		internal AutoResetEvent finishEvent = new AutoResetEvent(false);
 
+		private int hasErrors;
 
 		#region EXECUTOR_RW WORKER_RW
 		private Job job;
 		private volatile int doneIndices;
-		private ushort length;
+		private int length;
 		#endregion
 
 		private readonly Range[] indices;
+		private readonly Volatile.PaddedInt[] executedIndicesPerThread;
 
 		#region EXECUTOR_RW WORKER_R
 		private int temporalId;
+		private int minimumRangeToSteal = 0;
 		#endregion
 
 		#region EXECUTOR_RW
-		internal byte priority;
+		internal int priority;
 		#endregion
 
 
 		public QueuedJob() {
 			indices = new Range[Scheduler.AVAILABLE_CORES];
 			for (int i = 0; i < indices.Length; i++) indices[i] = new Range();
+			executedIndicesPerThread = new Volatile.PaddedInt[Scheduler.AVAILABLE_CORES];
 		}
 
 
-		internal void Init(Job job, ushort length, byte priority) {
+		internal void Init(Job job, ushort length, byte priority, ushort minimumRangeToSteal) {
 			Logger.WarnAssert(!Scheduler.InMainThread(), "Init can only be called from the main thread");
 			if (!Scheduler.InMainThread()) return;
-				
-			Thread.MemoryBarrier();
-			this.job = job;
-			temporalId = lastId++;
-			this.priority = priority;
-			Thread.MemoryBarrier();
-			
-			int nCores = Scheduler.CORES_IN_USE;
-			int nCoresInv = Scheduler.AVAILABLE_CORES - nCores;
-			int range = length / nCores;
-			for (int i = indices.Length - 1; i >= nCoresInv; i--) {
-				int start = i * range;
-				int end = (i + 1) * range - 1;
-				if (i == indices.Length - 1) end = length - 1;
-				indices[i].Set(start, start, end);
+
+			finishEvent.Reset();
+
+			Interlocked.Exchange(ref this.job, job);
+			Interlocked.Exchange(ref this.temporalId, lastId++);
+			Interlocked.Exchange(ref this.priority, priority);
+			Interlocked.Exchange(ref this.minimumRangeToSteal, minimumRangeToSteal);
+			Interlocked.Exchange(ref this.hasErrors, 0);
+
+			if (length == 0) indices[0].range.Set(1, 0);
+			else indices[0].range.Set(0, (ushort) (length - 1));
+
+			for (int i = 1; i < indices.Length; i++) {
+				indices[i].range.Set(1, 0);
 			}
+			for (int i = 0; i < executedIndicesPerThread.Length; i++) {
+				Interlocked.Exchange(ref executedIndicesPerThread[i].value, 0);
+			}
+			
+			this.doneIndices = 0; // volatile
+			Interlocked.Exchange(ref this.length, length);
 
-
-
-			doneIndices = 0;
-			Thread.MemoryBarrier();
-			this.length = length;
-			Thread.MemoryBarrier();
-
-			Logger.TraceVerbose("[" + temporalId + "] job created");
+			//Logger.TraceVerbose("[" + temporalId + "] job created");
 		}
 
+
 		internal bool TryExecute(int workerIndex, ref KeyValuePair<int, int>[] tmp) {
-			int startIndex = -1, index = -1, lastIndex = -1;
-			var ind = indices[workerIndex];
+			var rangeWrapper = indices[workerIndex];
 
-			// Get next index if available
-			lock (ind) {
-				lastIndex = ind.lastIndex;
-				if (ind.index <= lastIndex) {
-					startIndex = ind.startIndex;
-					index = ind.index;
-					++ind.index;
-				}
-			}
+			Range.PaddedRange rangeToExecute = rangeWrapper.range;
 
-			if (index == -1) {
-				// our range does not have more indices left. Get more indices from another range
-				// First, without locking we sort all the threads by the range available
+
+			// get an index to execute
+			if (!rangeWrapper.range.GetIndexAndIncrease(out rangeToExecute.index)) {
+				// This range is finished so we want a new range, if there is any available
+				
+
+				// Prepare tmp array
 				if (tmp == null || tmp.Length != indices.Length - 1) {
 					tmp = new KeyValuePair<int, int>[indices.Length - 1];
 				}
 
-				bool somethingFound = false;
+				// First we fetch and sort the remaining ranges
+				bool foundRange = false;
 				for (int i = 0, j = 0; i < indices.Length; i++) {
 					if (i == workerIndex) continue;
-					var otherInd = indices[i];
-					int range = otherInd.lastIndex + 1 - otherInd.index;
+					int range = indices[i].range.GetRemainingRange();
 					tmp[j++] = new KeyValuePair<int, int>(i, range);
-					if (range > 0) somethingFound = true;
+					if (range > minimumRangeToSteal) foundRange = true;
 				}
-
-				if (somethingFound) {
+				
+				if (foundRange) {
 					// sort by range
 					Array.Sort(tmp, sortByRange);
-					
-					for (int i = 0; i < tmp.Length; i++) {
-						var otherInd = indices[tmp[i].Key];
-						if (otherInd.index < otherInd.lastIndex) {
-							int stolenIndex = -1;
-							int stolenLastIndex = -1;
-							lock (otherInd) {
-								if (otherInd.index < otherInd.lastIndex) {
-									// This thread has enough indices, we can steal some of them
-									int range = otherInd.lastIndex + 1 - otherInd.index;
 
-									stolenLastIndex = otherInd.lastIndex;
-									otherInd.lastIndex = otherInd.index + range / 2 - 1;
-									stolenIndex = otherInd.index + range / 2;
-								}
-							}
-							if (stolenIndex != -1) {
-								lock (ind) {
-									startIndex = ind.startIndex = stolenIndex;
-									index = stolenIndex;
-									ind.index = stolenIndex + 1;
-									lastIndex = ind.lastIndex = stolenLastIndex;
-								}
-								break;
-							}
+					bool rangeObtained = false;
+					for (int i = 0; i < tmp.Length; i++) {
+						Range.PaddedRange obtainedRange;
+						if (indices[tmp[i].Key].GetFreeRange(out obtainedRange, (ushort) minimumRangeToSteal)) {
+							// We were able to get a new range
+							Logger.TraceVerbose("[" + temporalId + "] Range obtained: " + obtainedRange);
+							rangeToExecute = obtainedRange;
+
+							// Next set state, that can change by all threads. Right now only this thread wants to change it
+							++obtainedRange.index;
+							Interlocked.Exchange(ref rangeWrapper.range.state, obtainedRange.state);
+							rangeObtained = true;
+							break;
 						}
 					}
+					if (!rangeObtained) return ReturnFinished(workerIndex);
+				} else {
+					return ReturnFinished(workerIndex);
 				}
 			}
 
-			if (index == -1) {
-				return false;
-			}
+			if (rangeToExecute.index > rangeToExecute.lastIndex) return true;
 
-			
 			try {
-				job(index);
+				job(rangeToExecute.index);
 			} catch (Exception e) {
 				Logger.Error(e.ToString());
-			} finally {
-				if (index == lastIndex) {
-					// if we end a range update doneIndices with the size of the range
-					int rangeDone = lastIndex - startIndex + 1;
-					int f = Interlocked.Add(ref doneIndices, rangeDone); // increment when the current batch is done, not every step
-					if (f == length) {
-						Logger.TraceVerbose("[" + temporalId + "] job finished");
-					}
-				}
+				Interlocked.Exchange(ref hasErrors, 1);
+				Destroy();
+				return false;
 			}
-						
+			executedIndicesPerThread[workerIndex].value++;
+									
 			return true;
+		}
+
+		bool ReturnFinished(int workerIndex) {
+			Commit(workerIndex);
+			return false;
+		}
+
+		public void Commit(int workerIndex) {
+			if (executedIndicesPerThread[workerIndex].value > 0) {
+				Interlocked.Add(ref doneIndices, executedIndicesPerThread[workerIndex].value);
+				if (doneIndices == length) {
+					Logger.TraceVerbose("[" + temporalId + "] job finished");
+					finishEvent.Set();
+				}
+				executedIndicesPerThread[workerIndex].value = 0;
+			}
 		}
 
 		// DESC order
@@ -163,35 +163,25 @@ namespace Ashkatchap.Updater {
 				return;
 			}
 			Scheduler.executor.SetJobToAllThreads(this);
-			while (true) if (!TryExecute(indices.Length - 1, ref tmpForMainThread)) break;
-			while (!IsFinished()) {
-				Thread.SpinWait(20);
-			}
+			while (TryExecute(0, ref tmpForMainThread)) ;
+			while (!IsFinished()) finishEvent.WaitOne();
 		}
 
 		public void Destroy() {
-			Logger.ErrorAssert(!Scheduler.InMainThread(), "Init can only be called from the main thread");
-			if (!Scheduler.InMainThread()) return;
-
-			doneIndices = length;
+			Interlocked.Exchange(ref doneIndices, length);
+			finishEvent.Set();
 
 			for (int i = 0; i < indices.Length; i++) {
-				lock (indices[i]) {
-					indices[i].Set(0, 1, 0);
-				}
+				Interlocked.Exchange(ref indices[i].range.state, CLEAN_STATE);
 			}
-			Thread.MemoryBarrier();
+		}
+
+		public bool HasErrors() {
+			return hasErrors == 1;
 		}
 
 		public bool IsFinished() {
-			int f = doneIndices;
-			if (f == length) {
-				return true;
-			} else if (f > length) {
-				Logger.Error("doneIndices is greater than length");
-				return true;
-			}
-			return false;
+			return doneIndices == length;
 		}
 
 		public void ChangePriority(byte newPriority) {
@@ -219,14 +209,106 @@ namespace Ashkatchap.Updater {
 
 
 		public class Range {
-			public volatile int startIndex;
-			public volatile int index;
-			public volatile int lastIndex;
+			public PaddedRange range;
 			
-			public void Set(int startIndex, int index, int lastIndex) {
-				this.startIndex = startIndex;
-				this.index = index;
-				this.lastIndex = lastIndex;
+			public override string ToString() {
+				return range.ToString();
+			}
+
+			public bool GetFreeRange(out PaddedRange obtainedRange, ushort minimumRange = 0) {
+				obtainedRange.state = 0;
+				int availableRange;
+				PaddedRange copiedRange = new PaddedRange(range.index, range.lastIndex);
+				while ((availableRange = copiedRange.GetRemainingRange()) > minimumRange) {
+					var tmpCopied = copiedRange; // debug
+
+					var comparandState = copiedRange.state;
+					obtainedRange.index = (ushort) (copiedRange.index + availableRange / 2);
+					obtainedRange.lastIndex = copiedRange.lastIndex;
+
+					if (availableRange == 1) {
+						copiedRange.index = 1;
+						copiedRange.lastIndex = 0;
+					} else {
+						copiedRange.lastIndex = (ushort) (copiedRange.index + availableRange / 2 - 1);
+					}
+					var rangeToSet = copiedRange;
+
+					if (range.SetNewState(rangeToSet.state, comparandState, out copiedRange.state)) {
+						//Logger.TraceVerbose(tmpCopied.ToString() + "-> " + rangeToSet.ToString() + " | " + obtainedRange.ToString());
+						return true;
+					}
+				}
+				obtainedRange.index = obtainedRange.lastIndex = 0;
+				return false;
+			}
+
+
+
+			private const int CacheLineSize = 64;
+
+			[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
+			public struct PaddedRange {
+				// We want to use 32 bits to store both index and lastIndex so we can use the 
+				// Interlocked API with "state", that contains index and lastIndex
+				[FieldOffset(CacheLineSize + 0)] public int state;
+				[FieldOffset(CacheLineSize + 0)] public ushort index;
+				[FieldOffset(CacheLineSize + 2)] public ushort lastIndex;
+
+				public PaddedRange(ushort index, ushort lastIndex) {
+					this.state = 0;
+					this.index = index;
+					this.lastIndex = lastIndex;
+				}
+				public void Set(ushort index, ushort lastIndex) {
+					Interlocked.Exchange(ref state, new PaddedRange(index, lastIndex).state);
+				}
+
+				public int GetRemainingRange() {
+					return index > lastIndex ? 0 : lastIndex - index + 1;
+				}
+
+
+
+				public bool GetIndexAndIncrease(out ushort indexToExecute) {
+					var toSet = this;
+					while (index <= lastIndex) {
+						var comparand = toSet.state;
+						++toSet.index;
+
+						Logger.ErrorAssert(toSet.index == 0, "WTF overflow? when? why?");
+						
+						if (TTAS(ref state, toSet.state, comparand, out toSet.state)) {
+							indexToExecute = toSet.index;
+							return true;
+						}
+					}
+
+					indexToExecute = 0;
+					return false;
+				}
+
+				public bool SetNewState(int newState, int oldState, out int reportedOldState) {
+					return TTAS(ref state, newState, oldState, out reportedOldState);
+				}
+
+
+				/// <summary>
+				/// Test and Test and Set
+				/// </summary>
+				/// <param name="location"></param>
+				/// <param name="value"></param>
+				/// <param name="comparand"></param>
+				/// <param name="originalValue"></param>
+				/// <returns>true if we were able to set value because the previous value was comparand</returns>
+				private bool TTAS(ref int location, int value, int comparand, out int originalValue) {
+					return comparand == (originalValue = Interlocked.CompareExchange(ref location, value, comparand));
+				}
+
+
+				public override string ToString() {
+					return "{I:" + index + ", LI:" + lastIndex + "}";
+				}
 			}
 		}
 	}
