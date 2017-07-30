@@ -39,14 +39,16 @@
   <ItemGroup>
     <Compile Include="Ashkatchap\Scheduler\Scripts\Collections\ThreadSafeRingBuffer.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\Executor.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Scripts\Logger\InternalLogger.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\JobReference.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Scripts\Logger\Logger.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\Updater.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\QueuedJob.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\Scheduler.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\UpdateReference.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scripts\Worker.cs" />
-    <Compile Include="Ashkatchap\Shared\Scripts\Collections\UnorderedList.cs" />
-    <Compile Include="Ashkatchap\Shared\Scripts\Logger.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Scripts\Collections\UnorderedList.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Scripts\Logger\ILogger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

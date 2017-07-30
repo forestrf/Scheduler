@@ -54,6 +54,8 @@ namespace Ashkatchap.Updater {
 			firstUpdater = gameObject.AddComponent<FirstUpdaterBehaviour>();
 			lastUpdater = gameObject.AddComponent<LastUpdaterBehaviour>();
 
+			Logger.logger = new UnityLogger();
+
 			SetUpUpdaters();
 			Logger.Debug("Updater GameObject created and Updater Behaviours configured");
 

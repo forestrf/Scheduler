@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ashkatchap.Updater;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
@@ -123,7 +124,7 @@ namespace Ashkatchap.Shared.Collections {
 				int noCaben = Size + length - elements.Length;
 				int extra = step_increment * ((int) (noCaben / step_increment) + 1);
 				T[] newElements = new T[elements.Length + extra];
-				Logger.Trace("UnorderedList Resized from " + elements.Length + " to " + newElements.Length);
+				Logger.TraceVerbose("UnorderedList Resized from " + elements.Length + " to " + newElements.Length);
 				elements.CopyTo(newElements, 0);
 				elements = newElements;
 			}
