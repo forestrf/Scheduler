@@ -7,13 +7,15 @@ namespace Ashkatchap.Updater {
 	public class Updater {
 		private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action> queuedUpdateCallbacks = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action>(256);
 		private readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];
+		private readonly UnorderedList<UpdateReference>[] delayedRemoves = new UnorderedList<UpdateReference>[256];
 		private readonly Thread mainThread;
 		private int nextRecurrentId;
-
-		public Updater() {
+		
+		public Updater(int initialSize = 16, int stepIncrement = 16) {
 			mainThread = Thread.CurrentThread;
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
-				recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(16, 16);
+				recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(initialSize, stepIncrement);
+				delayedRemoves[i] = new UnorderedList<UpdateReference>(initialSize, stepIncrement);
 			}
 		}
 
@@ -26,6 +28,20 @@ namespace Ashkatchap.Updater {
 			Profiler.BeginSample("Queue Iterate");
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
 				var queue = recurrentCallbacks[i];
+
+				Profiler.BeginSample("Execute Delayed Deletes");
+				var delayedQueue = delayedRemoves[i];
+				while (delayedQueue.Size > 0) {
+					var reference = delayedQueue.ExtractLast();
+					for (int j = 0; j < queue.Size; j++) {
+						if (queue.elements[j].id == reference.id) {
+							queue.RemoveAt(j);
+							break;
+						}
+					}
+				}
+				Profiler.EndSample();
+
 				for (int j = 0; j < queue.Size; j++) {
 					try {
 						queue.elements[j].action();
@@ -51,15 +67,9 @@ namespace Ashkatchap.Updater {
 			return new UpdateReference(aw.id, order);
 		}
 		public void RemoveUpdateCallback(UpdateReference reference) {
-			var list = recurrentCallbacks[reference.order];
-			for (int i = 0; i < list.Size; i++) {
-				if (list.elements[i].id == reference.id) {
-					list.RemoveAt(i);
-					return;
-				}
-			}
+			delayedRemoves[reference.order].Add(reference);
 		}
-		
+
 		public void QueueCallback(Action method) {
 			queuedUpdateCallbacks.Enqueue(method);
 			Logger.Debug("Queued Update Callback");
