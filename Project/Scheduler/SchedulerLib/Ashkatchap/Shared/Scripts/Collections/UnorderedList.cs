@@ -11,7 +11,7 @@ namespace Ashkatchap.Shared.Collections {
 	/// Not thread safe
 	/// </summary>
 	/// <typeparam name="T">Type of the objects of the list</typeparam>
-	public class UnorderedList<T> : IList<T> {
+	internal class UnorderedList<T> : IList<T> {
 		public static readonly int DEFAULT_INITIAL_LENGTH = 64;
 		public static readonly int DEFAULT_STEP_INCREMENT = 64;
 
