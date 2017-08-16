@@ -56,7 +56,7 @@ namespace Ashkatchap.Updater {
 
 			Logger.logger = new UnityLogger();
 
-			SetUpUpdaters();
+			SetupUpdaters();
 			Logger.Debug("Updater GameObject created and Updater Behaviours configured");
 
 			Scheduler.MultithreadingStart(firstUpdate);
@@ -69,19 +69,19 @@ namespace Ashkatchap.Updater {
 			Destroy(lastUpdater);
 		}
 		
-		private void SetUpUpdaters() {
+		private void SetupUpdaters() {
 			firstUpdater.SetQueues(
 				() => {
 					firstUpdate.Execute();
 					update.Execute();
 				},
 				() => {
-					lastUpdate.Execute();
+					firstLateUpdate.Execute();
+					lateUpdate.Execute();
 				});
 			lastUpdater.SetQueues(
 				() => {
-					firstLateUpdate.Execute();
-					lateUpdate.Execute();
+					lastUpdate.Execute();
 				},
 				() => {
 					lastLateUpdate.Execute();
