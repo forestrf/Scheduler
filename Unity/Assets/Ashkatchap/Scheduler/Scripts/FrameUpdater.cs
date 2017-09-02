@@ -9,9 +9,28 @@ namespace Ashkatchap.Updater {
 	/// </summary>
 	public enum QueueOrder {
 		/// <summary>
+		/// Execute before any FixedUpdate script. It is intended to only read information before any script can makes changes to the scene, but not making changes is not enforced
+		/// </summary>
+		PreFixedUpdate,
+		/// <summary>
+		/// FixedUpdate
+		/// </summary>
+		FixedUpdate,
+		/// <summary>
+		/// Execute after any FixedUpdate script
+		/// </summary>
+		PostFixedUpdate,
+
+		/// <summary>
+		/// Execute after a physics step is executed (FixedUpdate, Physics execution and then this)
+		/// It will be executed in FixedUpdate or Update given the nature of how FixedUpdate works
+		/// </summary>
+		AfterFixedUpdate,
+
+		/// <summary>
 		/// Execute before any Update script. It is intended to only read information before any script can makes changes to the scene, but not making changes is not enforced
 		/// </summary>
-		PreUpdate = 0,
+		PreUpdate,
 		/// <summary>
 		/// Update
 		/// </summary>
@@ -20,6 +39,7 @@ namespace Ashkatchap.Updater {
 		/// Execute after any Update script
 		/// </summary>
 		PostUpdate,
+
 		/// <summary>
 		/// Execute before any LateUpdate script. It is intended to only read information after the animations are updated, but not making changes is not enforced
 		/// </summary>
@@ -39,16 +59,23 @@ namespace Ashkatchap.Updater {
 		private FirstUpdaterBehaviour firstUpdater;
 		private LastUpdaterBehaviour lastUpdater;
 
+		private readonly Updater firstFixedUpdate = new Updater();
+		private readonly Updater fixedUpdate = new Updater();
+		private readonly Updater lastFixedUpdate = new Updater();
+
+		private readonly Updater afterPhysicsExecuted = new Updater();
+
 		private readonly Updater firstUpdate = new Updater();
 		private readonly Updater update = new Updater();
 		private readonly Updater lastUpdate = new Updater();
+
 		private readonly Updater firstLateUpdate = new Updater();
 		private readonly Updater lateUpdate = new Updater();
 		private readonly Updater lastLateUpdate = new Updater();
 		
 
 		private void OnEnable() {
-			//gameObject.hideFlags = HideFlags.HideAndDontSave;
+			gameObject.hideFlags = HideFlags.HideAndDontSave;
 			DontDestroyOnLoad(gameObject);
 
 			firstUpdater = gameObject.AddComponent<FirstUpdaterBehaviour>();
@@ -70,8 +97,23 @@ namespace Ashkatchap.Updater {
 		}
 		
 		private void SetupUpdaters() {
+			bool afterFixedUpdateIsReady = false;
 			firstUpdater.SetQueues(
 				() => {
+					if (afterFixedUpdateIsReady) {
+						afterPhysicsExecuted.Execute();
+						afterFixedUpdateIsReady = false;
+					}
+
+					firstFixedUpdate.Execute();
+					fixedUpdate.Execute();
+				},
+				() => {
+					if (afterFixedUpdateIsReady) {
+						afterPhysicsExecuted.Execute();
+						afterFixedUpdateIsReady = false;
+					}
+
 					firstUpdate.Execute();
 					update.Execute();
 				},
@@ -80,6 +122,10 @@ namespace Ashkatchap.Updater {
 					lateUpdate.Execute();
 				});
 			lastUpdater.SetQueues(
+				() => {
+					lastFixedUpdate.Execute();
+					afterFixedUpdateIsReady = true;
+				},
 				() => {
 					lastUpdate.Execute();
 				},
@@ -104,9 +150,16 @@ namespace Ashkatchap.Updater {
 		private Updater GetUpdaterList(QueueOrder queue) {
 			switch (queue) {
 				default:
+				case QueueOrder.PreFixedUpdate: return firstFixedUpdate;
+				case QueueOrder.FixedUpdate: return fixedUpdate;
+				case QueueOrder.PostFixedUpdate: return lastFixedUpdate;
+
+				case QueueOrder.AfterFixedUpdate: return afterPhysicsExecuted;
+
 				case QueueOrder.PreUpdate: return firstUpdate;
 				case QueueOrder.Update: return update;
 				case QueueOrder.PostUpdate: return lastUpdate;
+
 				case QueueOrder.PreLateUpdate: return firstLateUpdate;
 				case QueueOrder.LateUpdate: return lateUpdate;
 				case QueueOrder.PostLateUpdate: return lastLateUpdate;

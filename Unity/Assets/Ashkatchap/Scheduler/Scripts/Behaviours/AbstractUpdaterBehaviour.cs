@@ -3,11 +3,16 @@ using UnityEngine;
 
 namespace Ashkatchap.Updater.Behaviours {
 	public abstract class AbstractUpdaterBehaviour : MonoBehaviour {
-		private Action update, lateUpdate;
+		private Action fixedUpdate, update, lateUpdate;
 
-		public void SetQueues(Action update, Action lateUpdate) {
+		public void SetQueues(Action fixedUpdate, Action update, Action lateUpdate) {
+			this.fixedUpdate = fixedUpdate;
 			this.update = update;
 			this.lateUpdate = lateUpdate;
+		}
+
+		private void FixedUpdate() {
+			fixedUpdate();
 		}
 
 		private void Update() {
