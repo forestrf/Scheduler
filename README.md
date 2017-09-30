@@ -6,6 +6,10 @@ Frame Update Manager and Multithreaded Job Scheduler
 For Unity it gives you more control that using Update/LateUpdate as it allows you to add/remove Update callbacks
 to 6 different queues with a given priority between 0 (max) to 255 (min):
 
+- PreFixedUpdate
+- FixedUpdate
+- PostFixedUpdate
+- AfterFixedUpdate (In order, After FixedUpdate is executed and a physics step performed, this queue is executed)
 - PreUpdate
 - Update
 - PostUpdate
