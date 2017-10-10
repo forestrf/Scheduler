@@ -110,6 +110,7 @@ public class Program {
 	void MultithreadDoNothing(int index) {
 		int ignore = 1;
 		for (int i = 0; i < workPerIteration; i++) ignore += i % ignore;
+
 		System.Threading.Interlocked.Increment(ref test[index]);
 	}
 }

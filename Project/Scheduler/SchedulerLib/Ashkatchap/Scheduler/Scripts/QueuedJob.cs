@@ -253,7 +253,7 @@ namespace Ashkatchap.Updater {
 				}
 
 				public int GetRemainingRange() {
-					return index > lastIndex ? 0 : lastIndex - index + 1;
+					return (int) ((uint) (lastIndex - index + 1));
 				}
 				
 

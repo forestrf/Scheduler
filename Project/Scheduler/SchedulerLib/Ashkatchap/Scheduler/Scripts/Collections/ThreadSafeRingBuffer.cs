@@ -47,18 +47,18 @@ namespace Ashkatchap.Shared.Collections {
 				Thread.MemoryBarrier();
 				_consumerCursor = _consumerCursor == _entries.Length - 1 ? 0 : _consumerCursor + 1;
 				return true;
-			} else {
-				return false;
 			}
+			return false;
 		}
 	}
 
 	internal static class Volatile {
 		private const int CacheLineSize = 64;
+		private const int IntSize = 4;
 
-		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
+		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2 - IntSize)]
 		public struct PaddedInt {
-			[FieldOffset(CacheLineSize)]
+			[FieldOffset(CacheLineSize - IntSize)]
 			public int value;
 
 			public PaddedInt(int value) {
@@ -70,9 +70,9 @@ namespace Ashkatchap.Shared.Collections {
 			}
 		}
 
-		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
+		[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2 - IntSize)]
 		public struct PaddedVolatileInt {
-			[FieldOffset(CacheLineSize)]
+			[FieldOffset(CacheLineSize - IntSize)]
 			public volatile int value;
 
 			public PaddedVolatileInt(int value) {

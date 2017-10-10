@@ -7,7 +7,7 @@ namespace Ashkatchap.Updater {
 			private readonly Thread thread;
 			internal readonly AutoResetEvent waiter = new AutoResetEvent(false);
 			private WorkerManager executor;
-			private int index;
+			private readonly int index;
 
 			public Worker(WorkerManager executor, int index) {
 				this.executor = executor;
@@ -47,7 +47,10 @@ namespace Ashkatchap.Updater {
 
 						while (queuedJob.TryExecute(index)) {
 							workDone = true;
-							if (!IsUpToDate()) {
+							var currentExecutorPriorityStamp = executor.lastActionStamp;
+							if (currentExecutorPriorityStamp != lastExecutorPriorityStamp) {
+								lastExecutorPriorityStamp = currentExecutorPriorityStamp;
+
 								p = i = 0;
 								break;
 							}
