@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace Ashkatchap.Updater {
-	internal class InternalLogger : ILogger {
+	internal sealed class InternalLogger : ILogger {
 		public void Error(string message) {
 			Console.WriteLine(message);
 		}

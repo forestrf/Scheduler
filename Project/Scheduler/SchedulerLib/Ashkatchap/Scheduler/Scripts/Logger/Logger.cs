@@ -1,98 +1,74 @@
-﻿//#define LOGLEVEL_TRACE_VERBOSE
-//#define LOGLEVEL_TRACE
-//#define LOGLEVEL_DEBUG
-//#define LOGLEVEL_INFO
-//#define LOGLEVEL_WARN
-#define LOGLEVEL_ERROR
-
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace Ashkatchap.Updater {
 	public static class Logger {
+		private const string KEYWORD = "SCHEDULER_";
 		public static ILogger logger = new InternalLogger();
 
-#if LOGLEVEL_TRACE_VERBOSE || LOGLEVEL_TRACE || LOGLEVEL_DEBUG || LOGLEVEL_INFO || LOGLEVEL_WARN || LOGLEVEL_ERROR
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG"), Conditional(KEYWORD + "INFO"), Conditional(KEYWORD + "WARN"), Conditional(KEYWORD + "ERROR")]
 		public static void Error(string message) {
 			logger.Error(message);
 		}
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG"), Conditional(KEYWORD + "INFO"), Conditional(KEYWORD + "WARN"), Conditional(KEYWORD + "ERROR")]
 		public static void ErrorAssert(bool check, string message) {
 			if (check) {
 				logger.Error(message);
 			}
 		}
-#else
-		[Conditional("LOGLEVEL_NEVER")] public static void Error(string message) { }
-		[Conditional("LOGLEVEL_NEVER")] public static void ErrorAssert(bool check, string message) { }
-#endif
 
-#if LOGLEVEL_TRACE_VERBOSE || LOGLEVEL_TRACE || LOGLEVEL_DEBUG || LOGLEVEL_INFO || LOGLEVEL_WARN
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG"), Conditional(KEYWORD + "INFO"), Conditional(KEYWORD + "WARN")]
 		public static void Warn(string message) {
 			logger.Warn(message);
 		}
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG"), Conditional(KEYWORD + "INFO"), Conditional(KEYWORD + "WARN")]
 		public static void WarnAssert(bool check, string message) {
 			if (check) {
 				logger.Warn(message);
 			}
 		}
-#else
-		[Conditional("LOGLEVEL_NEVER")] public static void Warn(string message) { }
-		[Conditional("LOGLEVEL_NEVER")] public static void WarnAssert(bool check, string message) { }
-#endif
 
-#if LOGLEVEL_TRACE_VERBOSE || LOGLEVEL_TRACE || LOGLEVEL_DEBUG || LOGLEVEL_INFO
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG"), Conditional(KEYWORD + "INFO")]
 		public static void Info(string message) {
 			logger.Info(message);
 		}
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG"), Conditional(KEYWORD + "INFO")]
 		public static void InfoAssert(bool check, string message) {
 			if (check) {
 				logger.Info(message);
 			}
 		}
-#else
-		[Conditional("LOGLEVEL_NEVER")] public static void Info(string message) { }
-		[Conditional("LOGLEVEL_NEVER")] public static void InfoAssert(bool check, string message) { }
-#endif
 
-#if LOGLEVEL_TRACE_VERBOSE || LOGLEVEL_TRACE || LOGLEVEL_DEBUG
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG")]
 		public static void Debug(string message) {
 			logger.Debug(message);
 		}
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE"), Conditional(KEYWORD + "DEBUG")]
 		public static void DebugAssert(bool check, string message) {
 			if (check) {
 				logger.Debug(message);
 			}
 		}
-#else
-		[Conditional("LOGLEVEL_NEVER")] public static void Debug(string message) { }
-		[Conditional("LOGLEVEL_NEVER")] public static void DebugAssert(bool check, string message) { }
-#endif
 
-#if LOGLEVEL_TRACE_VERBOSE || LOGLEVEL_TRACE
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE")]
 		public static void Trace(string message) {
 			logger.Trace(message);
 		}
+		[Conditional(KEYWORD + "TRACEVERBOSE"), Conditional(KEYWORD + "TRACE")]
 		public static void TraceAssert(bool check, string message) {
 			if (check) {
 				logger.Trace(message);
 			}
 		}
-#else
-		[Conditional("LOGLEVEL_NEVER")] public static void Trace(string message) { }
-		[Conditional("LOGLEVEL_NEVER")] public static void TraceAssert(bool check, string message) { }
-#endif
 
-#if LOGLEVEL_TRACE_VERBOSE
+		[Conditional(KEYWORD + "TRACEVERBOSE")]
 		public static void TraceVerbose(string message) {
 			logger.TraceVerbose(message);
 		}
+		[Conditional(KEYWORD + "TRACEVERBOSE")]
 		public static void TraceVerboseAssert(bool check, string message) {
 			if (check) {
 				logger.TraceVerbose(message);
 			}
 		}
-#else
-		[Conditional("LOGLEVEL_NEVER")] public static void TraceVerbose(string message) { }
-		[Conditional("LOGLEVEL_NEVER")] public static void TraceVerboseAssert(bool check, string message) { }
-#endif
 	}
 }
