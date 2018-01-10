@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.Scheduler.Logging {
 	internal sealed class InternalLogger : ILogger {
 		public void Error(string message) {
 			Console.WriteLine(message);

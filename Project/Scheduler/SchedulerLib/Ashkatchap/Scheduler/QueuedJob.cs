@@ -1,9 +1,10 @@
-﻿using Ashkatchap.Shared.Collections;
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Ashkatchap.Scheduler.Collections;
+using Ashkatchap.Scheduler.Logging;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.Scheduler {
 	internal class QueuedJob {
 		private static int lastId = 0;
 		private static int CLEAN_STATE = new Range.SimpleRange(1, 0).state;

@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Ashkatchap.Scheduler.Logging;
+using System;
 using System.Threading;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
 		private class Worker {
 			private readonly Thread thread;

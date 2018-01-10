@@ -1,4 +1,4 @@
-﻿using Ashkatchap.Updater;
+﻿using Ashkatchap.Scheduler;
 using System;
 using System.Diagnostics;
 
@@ -90,7 +90,7 @@ public class Program {
 
 	int i = 0;
 	void B() {
-		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, Scheduler.DEFAULT_PRIORITY, minimumRangeToSteal);
+		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, Scheduler.DEFAULT_PRIORITY, null, minimumRangeToSteal);
 		i = (i + 1) % BU.Length;
 	}
 	void C() {

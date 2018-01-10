@@ -1,4 +1,4 @@
-﻿namespace Ashkatchap.Updater {
+﻿namespace Ashkatchap.Scheduler {
 	public struct UpdateReference {
 		internal readonly long id;
 		internal readonly byte order;

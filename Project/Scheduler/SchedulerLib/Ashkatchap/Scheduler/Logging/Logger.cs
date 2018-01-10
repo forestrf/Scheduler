@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 
-namespace Ashkatchap.Updater {
-	public static class Logger {
+namespace Ashkatchap.Scheduler.Logging {
+	internal static class Logger {
 		private const string KEYWORD = "SCHEDULER_";
 		public static ILogger logger = new InternalLogger();
 

@@ -1,10 +1,8 @@
-﻿using Ashkatchap.Updater;
-using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System;
+using Ashkatchap.Scheduler.Logging;
 using System.Text;
 
-namespace Ashkatchap.Shared.Collections {
+namespace Ashkatchap.Scheduler.Collections {
 	/// <summary>
 	/// Fast list that doesn't maintain the position of the objects.
 	/// Useful when the index of an object in the list is not important after adding/deleting objects
@@ -12,7 +10,7 @@ namespace Ashkatchap.Shared.Collections {
 	/// Not thread safe
 	/// </summary>
 	/// <typeparam name="T">Type of the objects of the list</typeparam>
-	internal class UnorderedList<T> : IList<T> {
+	internal class UnorderedList<T> {
 		public static readonly int DEFAULT_INITIAL_LENGTH = 64;
 		public static readonly int DEFAULT_STEP_INCREMENT = 64;
 
@@ -42,7 +40,6 @@ namespace Ashkatchap.Shared.Collections {
 			this.Size = internalLength;
 			this.elements = internalArray;
 			this.step_increment = stepIncrement;
-			enumerator = new EnumeratorImp(this);
 		}
 
 		public T this[int index] {
@@ -242,47 +239,7 @@ namespace Ashkatchap.Shared.Collections {
 				}
 			}
 		}
-
-		/// <summary>
-		/// Compare 2 lists element by element with the method Equals
-		/// Boxing with structs, generating garbage
-		/// </summary>
-		public bool ArrayEquals(UnorderedList<T> other) {
-			if (other.Size != Size) return false;
-			for (int i = 0; i < Size; i++) {
-				if (!elements[i].Equals(other.elements[i])) {
-					return false;
-				}
-			}
-			return true;
-		}
-
-		/// <summary>
-		/// Create a new instance with the same contents and indexes of this list
-		/// </summary>
-		public UnorderedList<T> Clone() {
-			var newList = new UnorderedList<T>(elements.Length, step_increment);
-			CopyTo(newList);
-			return newList;
-		}
-
-		/// <summary>
-		/// Create a new instance with the same contents and indexes of this list
-		/// </summary>
-		public void CopyTo(UnorderedList<T> to, int offset = 0) {
-			to.EnsureCapacity(Size + offset);
-			for (int i = 0; i < Size; i++) {
-				to.elements[i + offset] = elements[i];
-			}
-			to.Size = Size;
-		}
-
-		public T[] ToTrimArray() {
-			T[] arr = new T[Size];
-			Array.Copy(elements, 0, arr, 0, Size);
-			return arr;
-		}
-
+		
 		public override string ToString() {
 			StringBuilder s = new StringBuilder();
 			s.Append("Size: " + Size + " | ");
@@ -299,75 +256,6 @@ namespace Ashkatchap.Shared.Collections {
 
 		public bool Contains(T item) {
 			return IndexOf(item) != -1;
-		}
-
-		void IList<T>.Insert(int index, T item) {
-			Insert(index, item);
-		}
-
-		void IList<T>.RemoveAt(int index) {
-			RemoveAt(index);
-		}
-
-		void ICollection<T>.Add(T item) {
-			Add(item);
-		}
-
-		public void CopyTo(T[] array, int arrayIndex) {
-			throw new NotImplementedException();
-		}
-
-		public IEnumerator<T> GetEnumerator() {
-			throw new NotImplementedException();
-		}
-
-		IEnumerator IEnumerable.GetEnumerator() {
-			throw new NotImplementedException();
-		}
-
-		public EnumeratorImp enumerator;
-
-		public bool IsReadOnly {
-			get {
-				return step_increment == 0;
-			}
-		}
-
-		public int Count {
-			get { return Size; }
-		}
-
-		public class EnumeratorImp {
-			UnorderedList<T> list;
-			public EnumeratorImp(UnorderedList<T> list) {
-				this.list = list;
-			}
-			public Enumerator GetEnumerator() {
-				return new Enumerator(list);
-			}
-
-			public struct Enumerator {
-				private readonly UnorderedList<T> list;
-				private int index;
-
-				public Enumerator(UnorderedList<T> list) {
-					this.list = list;
-					index = -1;
-				}
-
-				public T Current {
-					get { return list.elements[index]; }
-				}
-
-				public bool MoveNext() {
-					index++;
-					return index < list.Size;
-				}
-
-				public void Reset() {
-					index = -1;
-				}
-			}
 		}
 	}
 }

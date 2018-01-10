@@ -1,6 +1,7 @@
-﻿using System;
+﻿using Ashkatchap.Scheduler.Logging;
+using System;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.Scheduler {
 	public delegate void Job(int index);
 
 	public static class Scheduler {
@@ -32,7 +33,7 @@ namespace Ashkatchap.Updater {
 			executor = null;
 		}
 
-		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = DEFAULT_PRIORITY, ushort minimumRangeToSteal = 0) {
+		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = DEFAULT_PRIORITY, Action<Job> OnFinished = null, ushort minimumRangeToSteal = 0) {
 			return executor.QueueMultithreadJobInstance(callback, numberOfIterations, priority, minimumRangeToSteal);
 		}
 

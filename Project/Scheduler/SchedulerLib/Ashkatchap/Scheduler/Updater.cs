@@ -1,9 +1,10 @@
-﻿using Ashkatchap.Shared.Collections;
+﻿using Ashkatchap.Scheduler.Collections;
 using System;
 using System.Threading;
 using UnityEngine.Profiling;
+using Ashkatchap.Scheduler.Logging;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.Scheduler {
 	public class Updater {
 		private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action> queuedUpdateCallbacks = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action>(256);
 		private readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];

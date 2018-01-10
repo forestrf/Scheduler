@@ -1,9 +1,10 @@
-﻿using Ashkatchap.Shared.Collections;
+﻿using Ashkatchap.Scheduler.Collections;
+using Ashkatchap.Scheduler.Logging;
 using System;
 using System.Threading;
 using UnityEngine.Profiling;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
 		public class WorkerManager {
 			internal readonly JobArray[] jobsToDo; // Only "thread" writes, others only read
@@ -53,7 +54,7 @@ namespace Ashkatchap.Updater {
 					}
 					return new JobReference(null);
 				} else {
-					var queuedJob = pool.Count > 0 ? pool.ExtractLast() : new QueuedJob();
+					var queuedJob = pool.Size > 0 ? pool.ExtractLast() : new QueuedJob();
 					queuedJob.Init(job, numberOfIterations, priority, minimumRangeToSteal);
 
 					jobsToDo[queuedJob.priority].AddAuto(queuedJob.priority, queuedJob);

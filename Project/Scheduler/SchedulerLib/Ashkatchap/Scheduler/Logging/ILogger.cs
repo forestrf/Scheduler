@@ -1,4 +1,4 @@
-﻿namespace Ashkatchap.Updater {
+﻿namespace Ashkatchap.Scheduler.Logging {
 	public interface ILogger {
 		void Error(string message);
 		void Warn(string message);

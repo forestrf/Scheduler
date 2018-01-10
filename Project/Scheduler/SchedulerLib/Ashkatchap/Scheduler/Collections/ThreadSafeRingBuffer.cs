@@ -1,8 +1,8 @@
-using Ashkatchap.Updater;
+using Ashkatchap.Scheduler.Logging;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace Ashkatchap.Shared.Collections {
+namespace Ashkatchap.Scheduler.Collections {
 	/// <summary>
 	/// Implementation of the Disruptor pattern
 	/// </summary>

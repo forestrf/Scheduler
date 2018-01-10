@@ -1,4 +1,6 @@
-﻿namespace Ashkatchap.Updater {
+﻿using Ashkatchap.Scheduler.Logging;
+
+namespace Ashkatchap.Scheduler {
 	public struct JobReference {
 		private QueuedJob job;
 		private int id;
