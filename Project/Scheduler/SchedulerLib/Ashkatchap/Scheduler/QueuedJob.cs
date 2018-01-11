@@ -236,17 +236,16 @@ namespace Ashkatchap.Scheduler {
 
 			[StructLayout(LayoutKind.Explicit)]
 			public struct SimpleRange {
+				/// <summary>Needed for the class Interlocked to change a range atomically. 32 bits max</summary>
 				[FieldOffset(0)] public int state;
 				[FieldOffset(0)] public ushort index;
 				[FieldOffset(2)] public ushort lastIndex;
 
-				public SimpleRange(ushort index, ushort lastIndex) {
-					this.state = 0;
+				public SimpleRange(ushort index, ushort lastIndex) : this() {
 					this.index = index;
 					this.lastIndex = lastIndex;
 				}
-				public SimpleRange(ref SimpleRange other) {
-					index = lastIndex = 0;
+				public SimpleRange(ref SimpleRange other) : this() {
 					state = other.state;
 				}
 				public void SetThreadSafe(ushort index, ushort lastIndex) {
@@ -303,8 +302,6 @@ namespace Ashkatchap.Scheduler {
 
 			[StructLayout(LayoutKind.Explicit, Size = CacheLineSize * 2)]
 			public struct PaddedRange {
-				// We want to use 32 bits to store both index and lastIndex so we can use the 
-				// Interlocked API with "state", that contains index and lastIndex
 				[FieldOffset(CacheLineSize)] public SimpleRange value;
 
 				public PaddedRange(ushort index, ushort lastIndex) {

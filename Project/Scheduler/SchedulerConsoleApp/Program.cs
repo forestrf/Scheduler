@@ -32,30 +32,10 @@ public class Program {
 	public ushort minimumRangeToSteal = 0;
 
 	public int workPerIteration = 0;
-
-	Action DoNothingCached;
-	Action cachedA, cachedB, cachedC, cachedD;
+	
 	Job MultithreadDoNothingCached;
 	private void Awake() {
-		DoNothingCached = DoNothing;
-		cachedA = A;
-		cachedB = B;
-		cachedC = C;
-		cachedD = D;
 		MultithreadDoNothingCached = MultithreadDoNothing;
-	}
-
-	public static int[] test;
-
-	public int AllTrueInTest() {
-		int fails = 0;
-		for (int i = 0; i < test.Length; i++) {
-			if (test[i] != arraySize) {
-				Console.WriteLine(i);
-				fails++;
-			}
-		}
-		return fails;
 	}
 
 	void Start() {
@@ -63,14 +43,12 @@ public class Program {
 		BU = new UpdateReference[arraySize];
 		CU = new UpdateReference[arraySize];
 		jobs = new JobReference[arraySize];
-		test = new int[multithreadIterations];
-		AU = updater.AddUpdateCallback(cachedA, 126);
+		AU = updater.AddUpdateCallback(A, 126);
 		for (int i = 0; i < BU.Length; i++) {
-			nothingUpdate[i] = updater.AddUpdateCallback(DoNothingCached, 126);
-			BU[i] = updater.AddUpdateCallback(cachedB, 127);
-			CU[i] = updater.AddUpdateCallback(cachedC, 128);
+			nothingUpdate[i] = updater.AddUpdateCallback(DoNothing, 126);
+			BU[i] = updater.AddUpdateCallback(B, 127);
+			CU[i] = updater.AddUpdateCallback(C, 128);
 		}
-		DU = updater.AddUpdateCallback(cachedD, 129);
 	}
 	void End() {
 		updater.RemoveUpdateCallback(AU);
@@ -85,7 +63,6 @@ public class Program {
 	void A() {
 		Scheduler.FORCE_SINGLE_THREAD = singleThread;
 		Scheduler.DESIRED_NUM_CORES = NUM_THREADS;
-		for (int i = 0; i < test.Length; i++) System.Threading.Interlocked.Exchange(ref test[i], 0);
 	}
 
 	int i = 0;
@@ -98,19 +75,6 @@ public class Program {
 		i = (i + 1) % BU.Length;
 	}
 
-	void D() {
-		if (AllTrueInTest() > 0) {
-			Console.WriteLine("WTF");
-		}
-	}
-
-	void DoNothing() {
-	}
-
-	void MultithreadDoNothing(int index) {
-		int ignore = 1;
-		for (int i = 0; i < workPerIteration; i++) ignore += i % ignore;
-
-		System.Threading.Interlocked.Increment(ref test[index]);
-	}
+	void DoNothing() { }
+	void MultithreadDoNothing(int index) { }
 }

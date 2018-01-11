@@ -7,7 +7,7 @@ namespace Ashkatchap.Scheduler.Collections {
 	/// Implementation of the Disruptor pattern
 	/// </summary>
 	/// <typeparam name="T">the type of item to be stored</typeparam>
-	public class ThreadSafeRingBuffer_MultiProducer_SingleConsumer<T> where T : class {
+	internal class ThreadSafeRingBuffer_MultiProducer_SingleConsumer<T> where T : class {
 		private readonly T[] _entries;
 		private int _consumerCursor = 0;
 		private Volatile.PaddedVolatileInt _producerCursor = new Volatile.PaddedVolatileInt();
