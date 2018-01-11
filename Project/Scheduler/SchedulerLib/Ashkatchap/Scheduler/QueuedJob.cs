@@ -253,7 +253,8 @@ namespace Ashkatchap.Scheduler {
 				}
 
 				public int GetRemainingRange() {
-					return (int) ((uint) (lastIndex - index + 1));
+					int range = lastIndex - index + 1;
+					return range > 0 ? range : 0;
 				}
 				
 

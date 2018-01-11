@@ -59,10 +59,8 @@ namespace Ashkatchap.Scheduler {
 
 					jobsToDo[queuedJob.priority].AddAuto(queuedJob.priority, queuedJob);
 					lastActionStamp++;
-
-					Profiler.BeginSample("Signal Workers");
+					
 					SignalWorkers();
-					Profiler.EndSample();
 					return new JobReference(queuedJob);
 				}
 			}

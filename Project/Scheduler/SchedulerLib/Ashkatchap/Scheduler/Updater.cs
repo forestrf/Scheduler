@@ -30,7 +30,7 @@ namespace Ashkatchap.Scheduler {
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
 				var queue = recurrentCallbacks[i];
 
-				Profiler.BeginSample("Execute Delayed Deletes");
+				// Execute Delayed Deletes
 				var delayedQueue = delayedRemoves[i];
 				while (delayedQueue.Size > 0) {
 					var reference = delayedQueue.ExtractLast();
@@ -41,7 +41,6 @@ namespace Ashkatchap.Scheduler {
 						}
 					}
 				}
-				Profiler.EndSample();
 
 				for (int j = 0; j < queue.Size; j++) {
 					try {

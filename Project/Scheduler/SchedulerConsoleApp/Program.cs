@@ -21,12 +21,12 @@ public class Program {
 	}
 
 	UpdateReference[] nothingUpdate;
-	UpdateReference AU, DU;
+	UpdateReference AU;
 	UpdateReference[] BU, CU;
 	JobReference[] jobs;
 
 	public int arraySize = 100;
-	public ushort multithreadIterations = 1000;
+	public ushort multithreadIterations = 100;
 	public bool singleThread = false;
 	public int NUM_THREADS = 8;
 	public ushort minimumRangeToSteal = 0;
@@ -44,7 +44,7 @@ public class Program {
 		CU = new UpdateReference[arraySize];
 		jobs = new JobReference[arraySize];
 		AU = updater.AddUpdateCallback(A, 126);
-		for (int i = 0; i < BU.Length; i++) {
+		for (int i = 0; i < arraySize; i++) {
 			nothingUpdate[i] = updater.AddUpdateCallback(DoNothing, 126);
 			BU[i] = updater.AddUpdateCallback(B, 127);
 			CU[i] = updater.AddUpdateCallback(C, 128);
@@ -57,7 +57,6 @@ public class Program {
 			updater.RemoveUpdateCallback(BU[i]);
 			updater.RemoveUpdateCallback(CU[i]);
 		}
-		updater.RemoveUpdateCallback(DU);
 	}
 
 	void A() {
