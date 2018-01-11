@@ -29,9 +29,7 @@ public class Program {
 	public ushort multithreadIterations = 100;
 	public bool singleThread = false;
 	public int NUM_THREADS = 8;
-	public ushort minimumRangeToSteal = 0;
-
-	public int workPerIteration = 0;
+	
 	
 	Job MultithreadDoNothingCached;
 	private void Awake() {
@@ -66,7 +64,7 @@ public class Program {
 
 	int i = 0;
 	void B() {
-		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, Scheduler.DEFAULT_PRIORITY, null, minimumRangeToSteal);
+		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, Scheduler.DEFAULT_PRIORITY, null);
 		i = (i + 1) % BU.Length;
 	}
 	void C() {

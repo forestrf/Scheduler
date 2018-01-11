@@ -46,7 +46,7 @@ namespace Ashkatchap.Scheduler {
 
 			
 			
-			public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority, ushort minimumRangeToSteal) {
+			public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority) {
 				Logger.WarnAssert(!Scheduler.InMainThread(), "QueueMultithreadJobInstance can only be called from the main thread");
 				if (!Scheduler.InMainThread()) return default(JobReference);
 
@@ -57,7 +57,7 @@ namespace Ashkatchap.Scheduler {
 					return new JobReference(null);
 				} else {
 					var queuedJob = pool.Size > 0 ? pool.ExtractLast() : new QueuedJob();
-					queuedJob.Init(job, numberOfIterations, priority, minimumRangeToSteal);
+					queuedJob.Init(job, numberOfIterations, priority);
 
 					jobsToDo[queuedJob.priority].AddAuto(queuedJob.priority, queuedJob);
 					lastActionStamp++;

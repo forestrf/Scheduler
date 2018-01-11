@@ -19,7 +19,6 @@ namespace Ashkatchap.Scheduler {
 		private readonly Range[] todoIndices;
 
 		#region EXECUTOR_RW WORKER_R
-		private int minimumRangeToSteal = 0;
 		private int temporalId;
 		#endregion
 
@@ -35,14 +34,13 @@ namespace Ashkatchap.Scheduler {
 		}
 
 
-		internal void Init(Job job, ushort length, byte priority, ushort minimumRangeToSteal) {
+		internal void Init(Job job, ushort length, byte priority) {
 			Logger.WarnAssert(!Scheduler.InMainThread(), "Init can only be called from the main thread");
 			if (!Scheduler.InMainThread()) return;
 
 			Interlocked.Exchange(ref this.job, job);
 			Interlocked.Exchange(ref this.temporalId, lastId++);
 			Interlocked.Exchange(ref this.priority, priority);
-			Interlocked.Exchange(ref this.minimumRangeToSteal, minimumRangeToSteal);
 			Interlocked.Exchange(ref this.hasErrors, 0);
 
 			if (length == 0) todoIndices[0].range.value.SetThreadSafe(1, 0);
@@ -76,7 +74,7 @@ namespace Ashkatchap.Scheduler {
 				for (int i = 0; i < todoIndices.Length; i++) {
 					if (i == workerIndex) continue;
 					freeRange[i] = todoIndices[i].range.value.GetRemainingRange();
-					if (freeRange[i] > minimumRangeToSteal)
+					if (freeRange[i] > 0)
 						foundValidRange = true;
 					else freeRange[i] = 0;
 				}
@@ -94,12 +92,12 @@ namespace Ashkatchap.Scheduler {
 						}
 					}
 					// No more ranges to look at
-					if (freeRange[indexLargest] <= minimumRangeToSteal)
+					if (freeRange[indexLargest] <= 0)
 						break;
 
 					// Try steal from this range
 					Range.SimpleRange obtainedRange;
-					if (todoIndices[indexLargest].GetFreeRange(out obtainedRange, (ushort) minimumRangeToSteal)) {
+					if (todoIndices[indexLargest].GetFreeRange(out obtainedRange)) {
 						// We were able to get a new range
 						Logger.TraceVerbose("[" + temporalId + "] Range obtained: " + obtainedRange);
 						rangeToExecute.state = obtainedRange.state;
@@ -208,11 +206,11 @@ namespace Ashkatchap.Scheduler {
 				return range.ToString();
 			}
 
-			public bool GetFreeRange(out SimpleRange obtainedRange, ushort minimumRange = 0) {
+			public bool GetFreeRange(out SimpleRange obtainedRange) {
 				obtainedRange.state = 0;
 				int availableRange;
 				SimpleRange copiedRange = new SimpleRange(ref range.value); 
-				while ((availableRange = copiedRange.GetRemainingRange()) > minimumRange) {
+				while ((availableRange = copiedRange.GetRemainingRange()) > 0) {
 					var tmpCopied = copiedRange; // debug
 
 					var comparandState = copiedRange.state;

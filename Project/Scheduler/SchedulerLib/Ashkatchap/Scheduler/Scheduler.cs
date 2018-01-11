@@ -33,8 +33,8 @@ namespace Ashkatchap.Scheduler {
 			executor = null;
 		}
 
-		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = DEFAULT_PRIORITY, Action<Job> OnFinished = null, ushort minimumRangeToSteal = 0) {
-			return executor.QueueMultithreadJobInstance(callback, numberOfIterations, priority, minimumRangeToSteal);
+		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = DEFAULT_PRIORITY, Action<Job> OnFinished = null) {
+			return executor.QueueMultithreadJobInstance(callback, numberOfIterations, priority);
 		}
 
 		public static bool InMainThread() {
