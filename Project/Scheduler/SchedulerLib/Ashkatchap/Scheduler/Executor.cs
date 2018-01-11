@@ -8,7 +8,8 @@ namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
 		public class WorkerManager {
 			internal readonly JobArray[] jobsToDo; // Only "thread" writes, others only read
-			private readonly Worker[] workers;
+			internal readonly Worker[] workers;
+			internal readonly WorkerBase workerMainThread;
 
 			private UnorderedList<QueuedJob> pool = new UnorderedList<QueuedJob>();
 			
@@ -24,6 +25,7 @@ namespace Ashkatchap.Scheduler {
 				int numWorkers = Math.Max(1, Scheduler.AVAILABLE_CORES - 1);
 				workers = new Worker[numWorkers];
 				for (int i = 0; i < workers.Length; i++) workers[i] = new Worker(this, i + 1);
+				workerMainThread = new WorkerBase(0);
 
 				updater.AddUpdateCallback(Cleaner, 255);
 			}

@@ -9,14 +9,6 @@ namespace Ashkatchap.Scheduler {
 		private static int lastId = 0;
 		private static int CLEAN_STATE = new Range.SimpleRange(1, 0).state;
 
-		// Temporal arrays for each worker (and main thread) to sort the remaining ranges before trying to steal one
-		private static IndexCountArrPadded[] tmpRangeCounters = PrepareTmpRangeCounters();
-		private static IndexCountArrPadded[] PrepareTmpRangeCounters() {
-			var arr = new IndexCountArrPadded[Scheduler.AVAILABLE_CORES];
-			for (int i = 0; i < arr.Length; i++) arr[i].array = new IndexCount[Scheduler.AVAILABLE_CORES - 1];
-			return arr;
-		}
-
 		#region EXECUTOR_RW WORKER_RW
 		private int hasErrors;
 		private int length;
@@ -69,47 +61,60 @@ namespace Ashkatchap.Scheduler {
 		}
 
 
-		internal bool TryExecute(int workerIndex) {
+		internal bool TryExecute(FrameUpdater.WorkerBase worker) {
+			int workerIndex = worker.index;
 			Range.SimpleRange rangeToExecute = new Range.SimpleRange(ref todoIndices[workerIndex].range.value);
 			
 			// get an index to execute
 			if (!todoIndices[workerIndex].range.value.GetIndexAndIncrease(out rangeToExecute.index)) {
 				// This range is finished so we want a new range, if there is any available
+				
+				var freeRange = worker.tmp;
 
-				var tmp = tmpRangeCounters[workerIndex].array;
-
-				// First we fetch and sort the remaining ranges
-				bool foundRange = false;
-				for (int i = 0, j = 0; i < todoIndices.Length; i++) {
+				// First we fetch the remaining ranges
+				bool foundValidRange = false;
+				for (int i = 0; i < todoIndices.Length; i++) {
 					if (i == workerIndex) continue;
-					int range = todoIndices[i].range.value.GetRemainingRange();
-					tmp[j++] = new IndexCount(i, range);
-					if (range > minimumRangeToSteal) foundRange = true;
+					freeRange[i] = todoIndices[i].range.value.GetRemainingRange();
+					if (freeRange[i] > minimumRangeToSteal)
+						foundValidRange = true;
+					else freeRange[i] = 0;
 				}
 
-				if (foundRange) {
-					// sort by range
-					HeapSort(tmp);
+				if (!foundValidRange)
+					return ReturnFinished(workerIndex);
 
-					bool rangeObtained = false;
-					for (int i = 0; i < tmp.Length; i++) {
-						Range.SimpleRange obtainedRange;
-						if (todoIndices[tmp[i].index].GetFreeRange(out obtainedRange, (ushort) minimumRangeToSteal)) {
-							// We were able to get a new range
-							Logger.TraceVerbose("[" + temporalId + "] Range obtained: " + obtainedRange);
-							rangeToExecute.state = obtainedRange.state;
-
-							// Next set state, that can change by all threads. Right now only this thread wants to change it
-							++obtainedRange.index;
-							Interlocked.Exchange(ref todoIndices[workerIndex].range.value.state, obtainedRange.state);
-							rangeObtained = true;
-							break;
+				bool rangeObtained = false;
+				while (true) {
+					// Find largest range in tmp
+					int indexLargest = 0;
+					for (int i = 1; i < freeRange.Length; i++) {
+						if (freeRange[i] > freeRange[indexLargest]) {
+							indexLargest = i;
 						}
 					}
-					if (!rangeObtained) return ReturnFinished(workerIndex);
-				} else {
-					return ReturnFinished(workerIndex);
+					// No more ranges to look at
+					if (freeRange[indexLargest] <= minimumRangeToSteal)
+						break;
+
+					// Try steal from this range
+					Range.SimpleRange obtainedRange;
+					if (todoIndices[indexLargest].GetFreeRange(out obtainedRange, (ushort) minimumRangeToSteal)) {
+						// We were able to get a new range
+						Logger.TraceVerbose("[" + temporalId + "] Range obtained: " + obtainedRange);
+						rangeToExecute.state = obtainedRange.state;
+
+						// Next set state, that can change by all threads. Right now only this thread wants to change it
+						++obtainedRange.index;
+						Interlocked.Exchange(ref todoIndices[workerIndex].range.value.state, obtainedRange.state);
+						rangeObtained = true;
+						break;
+					} else {
+						freeRange[indexLargest] = todoIndices[indexLargest].range.value.GetRemainingRange();
+					}
 				}
+				if (!rangeObtained)
+					return ReturnFinished(workerIndex);
 			}
 
 			if (rangeToExecute.index > rangeToExecute.lastIndex) return true;
@@ -140,7 +145,7 @@ namespace Ashkatchap.Scheduler {
 				return;
 			}
 			Scheduler.executor.SetJobToAllThreads(this);
-			while (TryExecute(0)) ;
+			while (TryExecute(Scheduler.executor.workerMainThread)) ;
 			while (!IsFinished()) Thread.Sleep(0);
 		}
 

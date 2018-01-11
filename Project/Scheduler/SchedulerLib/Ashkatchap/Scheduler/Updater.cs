@@ -32,12 +32,16 @@ namespace Ashkatchap.Scheduler {
 
 				// Execute Delayed Deletes
 				var delayedQueue = delayedRemoves[i];
-				while (delayedQueue.Size > 0) {
-					var reference = delayedQueue.ExtractLast();
-					for (int j = 0; j < queue.Size; j++) {
-						if (queue.elements[j].id == reference.id) {
-							queue.RemoveAt(j);
-							break;
+				if (delayedQueue.Size > 0) {
+					lock (delayedQueue) {
+						while (delayedQueue.Size > 0) {
+							var reference = delayedQueue.ExtractLast();
+							for (int j = 0; j < queue.Size; j++) {
+								if (queue.elements[j].id == reference.id) {
+									queue.RemoveAt(j);
+									break;
+								}
+							}
 						}
 					}
 				}
@@ -67,7 +71,10 @@ namespace Ashkatchap.Scheduler {
 			return new UpdateReference(aw.id, order);
 		}
 		public void RemoveUpdateCallback(UpdateReference reference) {
-			delayedRemoves[reference.order].Add(reference);
+			var delayedQueue = delayedRemoves[reference.order];
+			lock (delayedQueue) {
+				delayedRemoves[reference.order].Add(reference);
+			}
 		}
 
 		public void QueueCallback(Action method) {

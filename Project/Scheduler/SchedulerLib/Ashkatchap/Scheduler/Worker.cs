@@ -4,15 +4,21 @@ using System.Threading;
 
 namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
-		private class Worker {
+		internal class WorkerBase {
+			public readonly int index;
+			public readonly int[] tmp = new int[Scheduler.AVAILABLE_CORES];
+
+			public WorkerBase(int index) {
+				this.index = index;
+			}
+		}
+		internal class Worker : WorkerBase {
 			private readonly Thread thread;
 			internal readonly AutoResetEvent waiter = new AutoResetEvent(false);
 			private WorkerManager executor;
-			private readonly int index;
 
-			public Worker(WorkerManager executor, int index) {
+			public Worker(WorkerManager executor, int index) : base(index) {
 				this.executor = executor;
-				this.index = index;
 				thread = new Thread(() => { SecureLaunchThread(ThreadMethod, "Worker FrameUpdater [" + index + "]"); });
 				thread.Name = "Worker FrameUpdater [" + index + "]";
 				thread.Priority = ThreadPriority.AboveNormal;
@@ -46,7 +52,7 @@ namespace Ashkatchap.Scheduler {
 							continue;
 						}
 
-						while (queuedJob.TryExecute(index)) {
+						while (queuedJob.TryExecute(this)) {
 							workDone = true;
 							var currentExecutorPriorityStamp = executor.lastActionStamp;
 							if (currentExecutorPriorityStamp != lastExecutorPriorityStamp) {
