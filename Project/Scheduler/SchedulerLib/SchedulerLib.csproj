@@ -42,9 +42,6 @@
     <Compile Include="Ashkatchap\Scheduler\Collections\UnorderedList.cs" />
     <Compile Include="Ashkatchap\Scheduler\Executor.cs" />
     <Compile Include="Ashkatchap\Scheduler\JobReference.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Logging\ILogger.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Logging\InternalLogger.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Logging\Logger.cs" />
     <Compile Include="Ashkatchap\Scheduler\Updater.cs" />
     <Compile Include="Ashkatchap\Scheduler\QueuedJob.cs" />
     <Compile Include="Ashkatchap\Scheduler\Scheduler.cs" />

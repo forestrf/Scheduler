@@ -1,4 +1,3 @@
-using Ashkatchap.Scheduler.Logging;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -19,11 +18,8 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <summary>
 		/// Thread safe Enqueue from any thread
 		/// </summary>
-		public void Enqueue(T obj) {
-			if (obj == null) {
-				Logger.Warn("Trying to Enqueue null. It is not supported because internally null represents a free place in the buffer for this algorithm.");
-				return;
-			}
+		public bool Enqueue(T obj) {
+			if (null == obj) return false;
 
 			int indexToWriteOn;
 			do {
@@ -32,6 +28,7 @@ namespace Ashkatchap.Scheduler.Collections {
 			} while (ReferenceEquals(null, Interlocked.CompareExchange(ref _entries[indexToWriteOn], obj, null)));
 			_producerCursor.value = indexToWriteOn == _entries.Length - 1 ? 0 : indexToWriteOn + 1;
 			Thread.MemoryBarrier(); // _producerCursor must be written eventually now
+			return true;
 		}
 		
 		/// <summary>

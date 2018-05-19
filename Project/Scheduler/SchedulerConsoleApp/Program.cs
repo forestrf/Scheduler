@@ -14,7 +14,7 @@ public class Program {
 		for (int i = 0; true; i++) {
 			var w = Stopwatch.StartNew();
 			for (int j = 0; j < 10; j++) {
-				updater.Execute();
+				updater.Execute(null);
 			}
 			Console.WriteLine((w.Elapsed.TotalMilliseconds / 10f) + "ms");
 		}
@@ -64,7 +64,7 @@ public class Program {
 
 	int i = 0;
 	void B() {
-		jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, Scheduler.DEFAULT_PRIORITY, null);
+		Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, out jobs[i], Scheduler.DEFAULT_PRIORITY, null);
 		i = (i + 1) % BU.Length;
 	}
 	void C() {

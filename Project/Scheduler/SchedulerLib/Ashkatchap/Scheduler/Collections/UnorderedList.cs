@@ -1,5 +1,4 @@
 ﻿using System;
-using Ashkatchap.Scheduler.Logging;
 using System.Text;
 
 namespace Ashkatchap.Scheduler.Collections {
@@ -121,7 +120,6 @@ namespace Ashkatchap.Scheduler.Collections {
 				int noCaben = Size + length - elements.Length;
 				int extra = step_increment * ((int) (noCaben / step_increment) + 1);
 				T[] newElements = new T[elements.Length + extra];
-				Logger.TraceVerbose("UnorderedList Resized from " + elements.Length + " to " + newElements.Length);
 				elements.CopyTo(newElements, 0);
 				elements = newElements;
 			}

@@ -1,5 +1,4 @@
 ﻿using Ashkatchap.Scheduler.Collections;
-using Ashkatchap.Scheduler.Logging;
 using System;
 using System.Threading;
 using UnityEngine.Profiling;
@@ -46,24 +45,25 @@ namespace Ashkatchap.Scheduler {
 
 			
 			
-			public JobReference QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority) {
-				Logger.WarnAssert(!Scheduler.InMainThread(), "QueueMultithreadJobInstance can only be called from the main thread");
-				if (!Scheduler.InMainThread()) return default(JobReference);
+			public bool QueueMultithreadJobInstance(Job job, ushort numberOfIterations, byte priority, Action<Exception> onException, out JobReference jobReference) {
+				jobReference = default(JobReference);
+				if (!Scheduler.InMainThread()) return false;
 
 				if (Scheduler.FORCE_SINGLE_THREAD) {
 					for (int i = 0; i < numberOfIterations; i++) {
 						job(i);
 					}
-					return new JobReference(null);
+					return false;
 				} else {
 					var queuedJob = pool.Size > 0 ? pool.ExtractLast() : new QueuedJob();
-					queuedJob.Init(job, numberOfIterations, priority);
+					queuedJob.Init(job, numberOfIterations, priority, onException);
 
 					jobsToDo[queuedJob.priority].AddAuto(queuedJob.priority, queuedJob);
 					lastActionStamp++;
 					
 					SignalWorkers();
-					return new JobReference(queuedJob);
+					jobReference = new JobReference(queuedJob);
+					return true;
 				}
 			}
 			
@@ -71,9 +71,8 @@ namespace Ashkatchap.Scheduler {
 				JobPriorityChange(queuedJob, 0);
 			}
 
-			internal void JobPriorityChange(QueuedJob queuedJob, byte newPriority) {
-				Logger.WarnAssert(!Scheduler.InMainThread(), "JobPriorityChange can only be called from the main thread");
-				if (!Scheduler.InMainThread()) return;
+			internal bool JobPriorityChange(QueuedJob queuedJob, byte newPriority) {
+				if (!Scheduler.InMainThread()) return false;
 				
 				Thread.MemoryBarrier();
 				jobsToDo[queuedJob.priority].RemoveAuto(queuedJob.priority, queuedJob);
@@ -82,6 +81,7 @@ namespace Ashkatchap.Scheduler {
 				lastActionStamp++;
 
 				SignalWorkers();
+				return true;
 			}
 
 
@@ -92,7 +92,7 @@ namespace Ashkatchap.Scheduler {
 				for (int p = 0; p < jobsToDo.Length; p++) {
 					for (int i = jobsToDo[p].count - 1; i >= 0; i--) {
 						var job = jobsToDo[p].array[i];
-						if (job.IsFinished()) {
+						if (0 < job.Remaining()) {
 							jobsToDo[p].RemoveAtAuto(p, i);
 							pool.Add(job);
 						}
@@ -119,7 +119,6 @@ namespace Ashkatchap.Scheduler {
 
 			private void IncreaseArray() {
 				QueuedJob[] newArray = new QueuedJob[array.Length + INCREMENT];
-				Logger.Trace("Array of multithreaded jobs increased from " + array.Length + " to " + newArray.Length);
 				array.CopyTo(newArray, 0);
 				array = newArray;
 			}
@@ -151,23 +150,23 @@ namespace Ashkatchap.Scheduler {
 					Remove(queuedJob);
 				}
 			}
-			private void RemoveDisplacingOlder(QueuedJob queuedJob) {
+			private bool RemoveDisplacingOlder(QueuedJob queuedJob) {
 				for (int i = 0; i < count; i++) {
 					if (array[i] == queuedJob) {
 						RemoveAtDisplacingOlder(i);
-						return;
+						return true;
 					}
 				}
-				Logger.Error("Trying to remove but it does not exist!");
+				return false;
 			}
-			private void Remove(QueuedJob queuedJob) {
+			private bool Remove(QueuedJob queuedJob) {
 				for (int i = 0; i < count; i++) {
 					if (array[i] == queuedJob) {
 						RemoveAt(i);
-						return;
+						return true;
 					}
 				}
-				Logger.Error("Trying to remove but it does not exist!");
+				return false;
 			}
 
 			public void RemoveAtAuto(int queue, int index) {

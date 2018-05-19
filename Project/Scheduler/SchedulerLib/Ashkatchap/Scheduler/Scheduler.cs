@@ -1,5 +1,4 @@
-﻿using Ashkatchap.Scheduler.Logging;
-using System;
+﻿using System;
 
 namespace Ashkatchap.Scheduler {
 	public delegate void Job(int index);
@@ -17,24 +16,18 @@ namespace Ashkatchap.Scheduler {
 
 
 		public static void MultithreadingStart(Updater updater) {
-			if (executor != null) {
-				Logger.Warn("Multithreading support is already enabled");
-				return;
-			}
+			if (null != executor) return;
 			Scheduler.updater = updater;
 			executor = new FrameUpdater.WorkerManager(updater);
 		}
 		public static void MultithreadingEnd() {
-			if (executor == null) {
-				Logger.Warn("Multithreading support is already isabled");
-				return;
-			}
+			if (executor == null) return;
 			executor.OnDestroy();
 			executor = null;
 		}
 
-		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = DEFAULT_PRIORITY, Action<Job> OnFinished = null) {
-			return executor.QueueMultithreadJobInstance(callback, numberOfIterations, priority);
+		public static bool QueueMultithreadJob(Job callback, ushort numberOfIterations, out JobReference jobReference, byte priority = DEFAULT_PRIORITY, Action<Job> OnFinished = null, Action<Exception> onException = null) {
+			return executor.QueueMultithreadJobInstance(callback, numberOfIterations, priority, onException, out jobReference);
 		}
 
 		public static bool InMainThread() {

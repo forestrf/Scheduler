@@ -1,5 +1,4 @@
-﻿using Ashkatchap.Scheduler.Logging;
-using System;
+﻿using System;
 using System.Threading;
 
 namespace Ashkatchap.Scheduler {
@@ -52,7 +51,7 @@ namespace Ashkatchap.Scheduler {
 							continue;
 						}
 
-						while (queuedJob.TryExecute(this)) {
+						while (queuedJob.TryExecute()) {
 							workDone = true;
 							var currentExecutorPriorityStamp = executor.lastActionStamp;
 							if (currentExecutorPriorityStamp != lastExecutorPriorityStamp) {
@@ -67,9 +66,7 @@ namespace Ashkatchap.Scheduler {
 					// We want to check for work to do until we make a full inspection of jobsToDo and find nothing 
 					if (!workDone) {
 						// If we reach this point, then we wait for more work:
-						Logger.TraceVerbose("Worker [" + index + "] Going to sleep");
 						waiter.WaitOne();
-						Logger.TraceVerbose("Worker [" + index + "] now awake");
 					}
 				}
 			}
@@ -90,7 +87,7 @@ namespace Ashkatchap.Scheduler {
 				}
 				catch (Exception e) {
 					if (e.GetType() != typeof(ThreadInterruptedException) && e.GetType() != typeof(ThreadAbortException))
-						Logger.Error(e.ToString());
+						Console.WriteLine(e.ToString());
 				}
 			}
 		}

@@ -2,7 +2,6 @@
 using System;
 using System.Threading;
 using UnityEngine.Profiling;
-using Ashkatchap.Scheduler.Logging;
 
 namespace Ashkatchap.Scheduler {
 	public class Updater {
@@ -25,7 +24,7 @@ namespace Ashkatchap.Scheduler {
 			return mainThread == Thread.CurrentThread;
 		}
 		
-		public void Execute() {
+		public void Execute(Action<Exception> onException) {
 			Profiler.BeginSample("Queue Iterate");
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
 				var queue = recurrentCallbacks[i];
@@ -51,7 +50,7 @@ namespace Ashkatchap.Scheduler {
 						queue.elements[j].action();
 					}
 					catch (Exception e) {
-						Logger.Error(e.ToString());
+						if (null != onException) onException.Invoke(e);
 					}
 				}
 			}
@@ -79,7 +78,6 @@ namespace Ashkatchap.Scheduler {
 
 		public void QueueCallback(Action method) {
 			queuedUpdateCallbacks.Enqueue(method);
-			Logger.Debug("Queued Update Callback");
 		}
 
 		
