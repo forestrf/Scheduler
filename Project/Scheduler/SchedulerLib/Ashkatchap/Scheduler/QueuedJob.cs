@@ -2,17 +2,14 @@
 using System.Threading;
 
 namespace Ashkatchap.Scheduler {
-	internal class QueuedJob {
-		public enum STATE : byte { WORKING, WAIT_FINISH, FINISHED, ERROR, DESTROYED }
-		public STATE GetState() {
-			return (STATE) state;
-		}
-		private int state;
+	public class QueuedJob : IEquatable<QueuedJob> {
 		private static int lastId = 0;
+		
+		private enum STATE { WAITING, STARTED, FINISHED, ERROR, DESTROYED }
+		private STATE state;
 
 		#region EXECUTOR_RW WORKER_RW
-		private int length;
-		private Job job;
+		private Action job;
 		private Action<Exception> onException;
 		#endregion
 
@@ -20,87 +17,58 @@ namespace Ashkatchap.Scheduler {
 		private int temporalId;
 		#endregion
 
-		#region EXECUTOR_RW
-		private int nextIndex;
-		private int doneIndices;
-		internal int priority;
-		#endregion
 
-
-		public QueuedJob() { }
-
-		internal bool Init(Job job, ushort length, byte priority, Action<Exception> onException) {
-			if (!Scheduler.InMainThread()) return false;
-
+		internal QueuedJob(Action job, Action<Exception> onException) {
 			this.onException = onException;
 			this.job = job;
-			this.temporalId = lastId++;
-			this.priority = priority;
-			this.state = (int) STATE.WORKING;
-			this.nextIndex = 0;
-			this.doneIndices = 0;
-			this.length = length;
-			Thread.MemoryBarrier();
-			return true;
+			this.temporalId = Interlocked.Increment(ref lastId);
+			if (0 == temporalId) // Don't allow 0 as id because it is the default value and the value of not valid jobs
+				temporalId = Interlocked.Increment(ref lastId);
+			state = STATE.WAITING;
 		}
 
-		internal bool TryExecute() {
-			if (state != (int) STATE.WORKING) return false;
-			int indexToExecute = Interlocked.Increment(ref nextIndex);
-			if (length - 1 == indexToExecute)
-				Interlocked.CompareExchange(ref state, (int) STATE.WAIT_FINISH, (int) STATE.WORKING);
-			else if (indexToExecute >= length)
-				return false;
+		internal bool Execute() {
+			if (STATE.WAITING != state) return false;
+			state = STATE.STARTED;
 
 			try {
-				job(indexToExecute);
-				int doneIndex = Interlocked.Increment(ref doneIndices);
-				if (length - 1 == doneIndex) {
-					var originalState = Interlocked.CompareExchange(ref state, (int) STATE.FINISHED, (int) STATE.WAIT_FINISH);
-					if ((int) STATE.WORKING == originalState)
-						Interlocked.CompareExchange(ref state, (int) STATE.FINISHED, (int) STATE.WORKING);
-				}
+				job();
+				state = STATE.FINISHED;
 				return true;
 			} catch (Exception e) {
-				Interlocked.Exchange(ref state, (int) STATE.ERROR);
-				Interlocked.Exchange(ref nextIndex, length);
+				Console.WriteLine(e);
+				state = STATE.ERROR;
 				if (null != onException) onException(e);
 				return false;
 			}
 		}
 
 		public bool WaitForFinish() {
-			if (!Scheduler.InMainThread()) return false;
-			if (null == Scheduler.executor) return false;
-			Scheduler.executor.SetJobToAllThreads(this);
-			while (STATE.WORKING == (STATE) state) { TryExecute(); }
-			while (STATE.WAIT_FINISH == (STATE) state) Thread.Sleep(0);
-			return STATE.FINISHED == (STATE) state;
+			check_again:
+			switch (state) {
+				case STATE.DESTROYED:
+				case STATE.ERROR:
+				default:
+					return false;
+				case STATE.WAITING:
+				case STATE.STARTED:
+					Thread.Sleep(0);
+					goto check_again;
+				case STATE.FINISHED:
+					return true;
+			}
 		}
 
 		public void Destroy() {
-			Interlocked.Exchange(ref state, (int) STATE.DESTROYED);
+			state = STATE.DESTROYED;
 		}
-		
-		/// <returns>0 when finished, more than 0 otherwise</returns>
-		public int Remaining() {
-			int count = doneIndices;
-			return length - count;
-		}
-
-		public bool ChangePriority(byte newPriority) {
-			if (!Scheduler.InMainThread()) return false;
-			if (null == Scheduler.executor) return false;
-
-			Scheduler.executor.JobPriorityChange(this, newPriority);
-			return true;
-		}
-
-		public bool CheckId(int id) {
-			return temporalId == id;
-		}
+				
 		public int GetId() {
 			return temporalId;
+		}
+
+		public bool Equals(QueuedJob other) {
+			return GetId() == other.GetId();
 		}
 	}
 }

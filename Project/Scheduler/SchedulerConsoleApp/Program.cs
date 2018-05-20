@@ -6,11 +6,10 @@ public class Program {
 	static Updater updater;
 	public static void Main(string[] args) {
 		updater = new Updater();
-		Scheduler.MultithreadingStart(updater);
-
-		Program p = new Program();
-		p.Awake();
-		p.Start();
+		ThreadedJobs.MultithreadingStart();
+		
+		Program.Awake();
+		Program.Start();
 		for (int i = 0; true; i++) {
 			var w = Stopwatch.StartNew();
 			for (int j = 0; j < 10; j++) {
@@ -20,35 +19,37 @@ public class Program {
 		}
 	}
 
-	UpdateReference[] nothingUpdate;
-	UpdateReference AU;
-	UpdateReference[] BU, CU;
-	JobReference[] jobs;
+	static UpdateReference[] nothingUpdate;
+	static UpdateReference AU;
+	static UpdateReference[] BU, CU;
+	static QueuedJob[] jobs;
 
-	public int arraySize = 100;
-	public ushort multithreadIterations = 100;
-	public bool singleThread = false;
-	public int NUM_THREADS = 8;
+	static public int arraySize = 10000;
+	static public bool singleThread = true;
+	static public int NUM_THREADS = 8;
 	
 	
-	Job MultithreadDoNothingCached;
-	private void Awake() {
-		MultithreadDoNothingCached = MultithreadDoNothing;
+	static Action MultithreadDoNothingCached;
+	private static void Awake() {
+		MultithreadDoNothingCached = DoNothing;
 	}
 
-	void Start() {
+	static void Start() {
 		nothingUpdate = new UpdateReference[arraySize];
 		BU = new UpdateReference[arraySize];
 		CU = new UpdateReference[arraySize];
-		jobs = new JobReference[arraySize];
+		jobs = new QueuedJob[arraySize];
 		AU = updater.AddUpdateCallback(A, 126);
 		for (int i = 0; i < arraySize; i++) {
 			nothingUpdate[i] = updater.AddUpdateCallback(DoNothing, 126);
 			BU[i] = updater.AddUpdateCallback(B, 127);
 			CU[i] = updater.AddUpdateCallback(C, 128);
+			if (i % 100 == 0)
+				Console.WriteLine(i);
 		}
+		Console.WriteLine("Start done");
 	}
-	void End() {
+	static void End() {
 		updater.RemoveUpdateCallback(AU);
 		for (int i = 0; i < BU.Length; i++) {
 			updater.RemoveUpdateCallback(nothingUpdate[i]);
@@ -57,21 +58,20 @@ public class Program {
 		}
 	}
 
-	void A() {
-		Scheduler.FORCE_SINGLE_THREAD = singleThread;
-		Scheduler.DESIRED_NUM_CORES = NUM_THREADS;
+	static void A() {
+		ThreadedJobs.FORCE_SINGLE_THREAD = singleThread;
+		ThreadedJobs.DESIRED_NUM_CORES = NUM_THREADS;
 	}
 
-	int i = 0;
-	void B() {
-		Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, out jobs[i], Scheduler.DEFAULT_PRIORITY, null);
+	static int i = 0;
+	static void B() {
+		ThreadedJobs.QueueMultithreadJob(MultithreadDoNothingCached, out jobs[i], null);
 		i = (i + 1) % BU.Length;
 	}
-	void C() {
+	static void C() {
 		jobs[i].WaitForFinish();
 		i = (i + 1) % BU.Length;
 	}
 
-	void DoNothing() { }
-	void MultithreadDoNothing(int index) { }
+	static void DoNothing() { }
 }

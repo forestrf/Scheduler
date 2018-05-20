@@ -1,9 +1,9 @@
-﻿using Ashkatchap.Updater;
+﻿using Ashkatchap.UnityScheduler;
 using System;
 using UnityEngine;
 
 public class TestUpdaterAPI : MonoBehaviour {
-	UpdateReferenceQ[] nothingUpdate;
+	UpdateReference[] nothingUpdate;
 
 	public int arraySize = 10000;
 
@@ -17,7 +17,7 @@ public class TestUpdaterAPI : MonoBehaviour {
 	private bool started = false;
 	void OnEnable() {
 		if (nothingUpdate == null || nothingUpdate.Length != arraySize) {
-			nothingUpdate = new UpdateReferenceQ[arraySize];
+			nothingUpdate = new UpdateReference[arraySize];
 		}
 		for (int i = 0; i < nothingUpdate.Length; i++) {
 			nothingUpdate[i] = UpdaterAPI.AddUpdateCallback(DoNothingCached, QueueOrder.PostUpdate);

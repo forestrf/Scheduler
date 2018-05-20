@@ -1,11 +1,10 @@
 ﻿using Ashkatchap.Scheduler.Collections;
 using System;
 using System.Threading;
-using UnityEngine.Profiling;
 
 namespace Ashkatchap.Scheduler {
 	public class Updater {
-		private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action> queuedUpdateCallbacks = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action>(256);
+		private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action> queuedUpdateCallbacks;
 		private readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];
 		private readonly UnorderedList<UpdateReference>[] delayedRemoves = new UnorderedList<UpdateReference>[256];
 		private readonly Thread mainThread;
@@ -17,6 +16,7 @@ namespace Ashkatchap.Scheduler {
 				recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(initialSize, stepIncrement);
 				delayedRemoves[i] = new UnorderedList<UpdateReference>(initialSize, stepIncrement);
 			}
+			queuedUpdateCallbacks = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<Action>(9, mainThread);
 		}
 
 
@@ -24,8 +24,8 @@ namespace Ashkatchap.Scheduler {
 			return mainThread == Thread.CurrentThread;
 		}
 		
+		/// <param name="onException">To avoid generating garbage use a static method or a cached delegate</param>
 		public void Execute(Action<Exception> onException) {
-			Profiler.BeginSample("Queue Iterate");
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
 				var queue = recurrentCallbacks[i];
 
@@ -50,21 +50,19 @@ namespace Ashkatchap.Scheduler {
 						queue.elements[j].action();
 					}
 					catch (Exception e) {
+						Console.WriteLine(e);
 						if (null != onException) onException.Invoke(e);
 					}
 				}
 			}
-			Profiler.EndSample();
-
-			Profiler.BeginSample("One Time Callbacks");
+			
 			Action action;
 			while (queuedUpdateCallbacks.TryDequeue(out action)) action();
-			Profiler.EndSample();
 		}
 
 		
 
-		public UpdateReference AddUpdateCallback(Action method, byte order = Scheduler.DEFAULT_PRIORITY) {
+		public UpdateReference AddUpdateCallback(Action method, byte order = 127) {
 			var aw = new ActionWrapped(nextRecurrentId++, method);
 			recurrentCallbacks[order].Add(aw);
 			return new UpdateReference(aw.id, order);

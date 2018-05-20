@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace Ashkatchap.Updater.Behaviours {
+namespace Ashkatchap.UnityScheduler.Behaviours {
 	public abstract class AbstractUpdaterBehaviour : MonoBehaviour {
 		private Action fixedUpdate, update, lateUpdate;
 

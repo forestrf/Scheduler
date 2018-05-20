@@ -1,9 +1,10 @@
-﻿using Ashkatchap.Updater.Behaviours;
+﻿using Ashkatchap.Scheduler;
+using Ashkatchap.UnityScheduler.Behaviours;
 using System;
 using UnityEngine;
 using UnityEngine.Profiling;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.UnityScheduler {
 	/// <summary>
 	/// Executing ordered
 	/// </summary>
@@ -81,70 +82,72 @@ namespace Ashkatchap.Updater {
 			firstUpdater = gameObject.AddComponent<FirstUpdaterBehaviour>();
 			lastUpdater = gameObject.AddComponent<LastUpdaterBehaviour>();
 
-			Logger.logger = new UnityLogger();
-
 			SetupUpdaters();
-			Logger.Debug("Updater GameObject created and Updater Behaviours configured");
+			Debug.Log("Updater GameObject created and Updater Behaviours configured");
 
-			Scheduler.MultithreadingStart(firstUpdate);
-			Logger.Debug("Multithread Support started");
+			ThreadedJobs.MultithreadingStart(firstUpdate);
+			Debug.Log("Multithread Support started");
 		}
 
 		private void OnDisable() {
-			Scheduler.MultithreadingEnd();
+			ThreadedJobs.MultithreadingEnd();
 			Destroy(firstUpdater);
 			Destroy(lastUpdater);
 		}
-		
+
+		private static void OnException(Exception e) {
+			Debug.Log(e);
+		}
+
 		private void SetupUpdaters() {
 			bool afterFixedUpdateIsReady = false;
 			firstUpdater.SetQueues(
 				() => {
 					if (afterFixedUpdateIsReady) {
-						afterPhysicsExecuted.Execute();
+						afterPhysicsExecuted.Execute(OnException);
 						afterFixedUpdateIsReady = false;
 					}
-
-					firstFixedUpdate.Execute();
-					fixedUpdate.Execute();
+					
+					firstFixedUpdate.Execute(OnException);
+					fixedUpdate.Execute(OnException);
 				},
 				() => {
 					if (afterFixedUpdateIsReady) {
-						afterPhysicsExecuted.Execute();
+						afterPhysicsExecuted.Execute(OnException);
 						afterFixedUpdateIsReady = false;
 					}
 
-					firstUpdate.Execute();
-					update.Execute();
+					firstUpdate.Execute(OnException);
+					update.Execute(OnException);
 				},
 				() => {
-					firstLateUpdate.Execute();
-					lateUpdate.Execute();
+					firstLateUpdate.Execute(OnException);
+					lateUpdate.Execute(OnException);
 				});
 			lastUpdater.SetQueues(
 				() => {
-					lastFixedUpdate.Execute();
+					lastFixedUpdate.Execute(OnException);
 					afterFixedUpdateIsReady = true;
 				},
 				() => {
-					lastUpdate.Execute();
+					lastUpdate.Execute(OnException);
 				},
 				() => {
-					lastLateUpdate.Execute();
+					lastLateUpdate.Execute(OnException);
 				});
 		}
 
-		public UpdateReferenceQ AddUpdateCallback(Action method, QueueOrder queue, byte order = Scheduler.DEFAULT_PRIORITY) {
-			return new UpdateReferenceQ(queue, GetUpdaterList(queue).AddUpdateCallback(method, order));
+		public UpdateReference AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
+			return new UpdateReference(queue, GetUpdaterList(queue).AddUpdateCallback(method, order));
 		}
-		public void RemoveUpdateCallback(UpdateReferenceQ reference) {
+		public void RemoveUpdateCallback(UpdateReference reference) {
 			var updater = GetUpdaterList(reference.queue);
 			updater.RemoveUpdateCallback(reference.reference);
 		}
 
 		public void QueueCallback(QueueOrder queue, Action method) {
 			GetUpdaterList(queue).QueueCallback(method);
-			Logger.Debug("Queued Update method");
+			Debug.Log("Queued Update method");
 		}
 		
 		private Updater GetUpdaterList(QueueOrder queue) {
@@ -167,11 +170,11 @@ namespace Ashkatchap.Updater {
 		}
 	}
 
-	public struct UpdateReferenceQ {
+	public struct UpdateReference {
 		public readonly QueueOrder queue;
-		public readonly UpdateReference reference;
+		public readonly Scheduler.UpdateReference reference;
 
-		public UpdateReferenceQ(QueueOrder queue, UpdateReference reference) {
+		public UpdateReference(QueueOrder queue, Scheduler.UpdateReference reference) {
 			this.queue = queue;
 			this.reference = reference;
 		}

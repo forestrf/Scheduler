@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace Ashkatchap.Updater.Behaviours {
+namespace Ashkatchap.UnityScheduler.Behaviours {
 	[DefaultExecutionOrder(-32000)]
 	public class FirstUpdaterBehaviour : AbstractUpdaterBehaviour { }
 }

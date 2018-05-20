@@ -1,12 +1,12 @@
-﻿using Ashkatchap.Updater;
+﻿using Ashkatchap.UnityScheduler;
 using System;
 using UnityEngine;
 using UnityEngine.Profiling;
 
 public class TestMultithreadAPI : MonoBehaviour {
-	UpdateReferenceQ firstUpdate;
-	UpdateReferenceQ secondUpdate;
-	JobReference[] jobs;
+	UpdateReference firstUpdate;
+	UpdateReference secondUpdate;
+	Ashkatchap.Scheduler.QueuedJob[] jobs;
 
 	public int arraySize = 10000;
 	public ushort multithreadIterations = 100;
@@ -17,7 +17,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 	
 	Action UpdateMethod1Cached;
 	Action UpdateMethod2Cached;
-	Job MultithreadDoNothingCached;
+	Ashkatchap.Scheduler.Job MultithreadDoNothingCached;
 	private void Awake() {
 		UpdateMethod1Cached = UpdateMethod1;
 		UpdateMethod2Cached = UpdateMethod2;
@@ -27,7 +27,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 	private bool started = false;
 	void OnEnable() {
 		if (jobs == null || jobs.Length != arraySize) {
-			jobs = new JobReference[arraySize];
+			jobs = new Ashkatchap.Scheduler.QueuedJob[arraySize];
 		}
 		firstUpdate = UpdaterAPI.AddUpdateCallback(UpdateMethod1Cached, QueueOrder.Update, 127);
 		secondUpdate = UpdaterAPI.AddUpdateCallback(UpdateMethod2Cached, QueueOrder.Update, 128);
@@ -61,11 +61,11 @@ public class TestMultithreadAPI : MonoBehaviour {
 	}
 	
 	void UpdateMethod1() {
-		Scheduler.FORCE_SINGLE_THREAD = singleThread;
-		Scheduler.DESIRED_NUM_CORES = NUM_THREADS;
+		Ashkatchap.Scheduler.ThreadedJobs.FORCE_SINGLE_THREAD = singleThread;
+		Ashkatchap.Scheduler.ThreadedJobs.DESIRED_NUM_CORES = NUM_THREADS;
 		Profiler.BeginSample("Add Multithread");
 		for (int i = 0; i < jobs.Length; i++) {
-			jobs[i] = Scheduler.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations);
+			Ashkatchap.Scheduler.ThreadedJobs.QueueMultithreadJob(MultithreadDoNothingCached, multithreadIterations, out jobs[i]);
 		}
 		Profiler.EndSample();
 	}

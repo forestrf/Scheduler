@@ -32,19 +32,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\..\..\Program Files\Unity 2017\Editor\Data\Managed\UnityEngine.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer.cs" />
     <Compile Include="Ashkatchap\Scheduler\Collections\UnorderedList.cs" />
     <Compile Include="Ashkatchap\Scheduler\Executor.cs" />
-    <Compile Include="Ashkatchap\Scheduler\JobReference.cs" />
     <Compile Include="Ashkatchap\Scheduler\Updater.cs" />
     <Compile Include="Ashkatchap\Scheduler\QueuedJob.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Scheduler.cs" />
+    <Compile Include="Ashkatchap\Scheduler\ThreadedJobs.cs" />
     <Compile Include="Ashkatchap\Scheduler\UpdateReference.cs" />
     <Compile Include="Ashkatchap\Scheduler\Worker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

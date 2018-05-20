@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Ashkatchap.Scheduler;
+using System;
 using UnityEngine;
 
-namespace Ashkatchap.Updater {
+namespace Ashkatchap.UnityScheduler {
 	public static class UpdaterAPI {
 		static FrameUpdater Instance;
 
@@ -13,14 +14,14 @@ namespace Ashkatchap.Updater {
 					return;
 #endif
 				Instance = new GameObject("Updater").AddComponent<FrameUpdater>();
-				Logger.Info("Updater created");
+				Debug.Log("Updater created");
 			}
 		}
 
-		public static UpdateReferenceQ AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
+		public static UpdateReference AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
 			return Instance.AddUpdateCallback(method, queue, order);
 		}
-		public static void RemoveUpdateCallback(UpdateReferenceQ reference) {
+		public static void RemoveUpdateCallback(UpdateReference reference) {
 			Instance.RemoveUpdateCallback(reference);
 		}
 
@@ -28,8 +29,8 @@ namespace Ashkatchap.Updater {
 			Instance.QueueCallback(queue, method);
 		}
 
-		public static JobReference QueueMultithreadJob(Job callback, ushort numberOfIterations, byte priority = 127) {
-			return Scheduler.QueueMultithreadJob(callback, numberOfIterations, priority);
+		public static bool QueueMultithreadJob(Job callback, ushort numberOfIterations, out QueuedJob jobReference) {
+			return Scheduler.ThreadedJobs.QueueMultithreadJob(callback, numberOfIterations, out jobReference);
 		}
 	}
 }
