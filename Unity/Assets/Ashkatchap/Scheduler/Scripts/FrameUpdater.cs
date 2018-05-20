@@ -85,7 +85,7 @@ namespace Ashkatchap.UnityScheduler {
 			SetupUpdaters();
 			Debug.Log("Updater GameObject created and Updater Behaviours configured");
 
-			ThreadedJobs.MultithreadingStart(firstUpdate);
+			ThreadedJobs.MultithreadingStart();
 			Debug.Log("Multithread Support started");
 		}
 
