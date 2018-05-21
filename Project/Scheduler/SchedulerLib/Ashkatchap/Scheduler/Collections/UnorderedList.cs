@@ -73,7 +73,8 @@ namespace Ashkatchap.Scheduler.Collections {
 				elements[Size++] = elements[index];
 				elements[index] = element;
 				return true;
-			} else return false;
+			}
+			else return false;
 		}
 
 		/// <summary>
@@ -104,7 +105,8 @@ namespace Ashkatchap.Scheduler.Collections {
 				Array.Copy(element, offset, elements, Size, length);
 				Size += length;
 				return true;
-			} else return false;
+			}
+			else return false;
 		}
 
 		/// <summary>
@@ -187,7 +189,8 @@ namespace Ashkatchap.Scheduler.Collections {
 				for (int i = 0; i < Size; i++) {
 					if (elements[i] == null) return i;
 				}
-			} else {
+			}
+			else {
 				for (int i = 0; i < Size; i++) {
 					if (element.Equals(elements[i])) return i;
 				}
@@ -231,13 +234,14 @@ namespace Ashkatchap.Scheduler.Collections {
 		public void Clear(bool onlyResetLength) {
 			if (onlyResetLength) {
 				Size = 0;
-			} else {
+			}
+			else {
 				while (Size > 0) {
 					ExtractLast();
 				}
 			}
 		}
-		
+
 		public override string ToString() {
 			StringBuilder s = new StringBuilder();
 			s.Append("Size: " + Size + " | ");

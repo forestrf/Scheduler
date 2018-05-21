@@ -31,10 +31,10 @@ namespace Ashkatchap.Scheduler.Collections {
 			int nextIndex = (indexToWriteOn + 1) & lengthMask;
 			_entries[indexToWriteOn] = obj;
 			_producerCursor = nextIndex;
-			
+
 			return true;
 		}
-		
+
 		/// <summary>
 		/// Thread unsafe. It must always be called from only one thread
 		/// </summary>

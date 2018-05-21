@@ -12,7 +12,7 @@ namespace Ashkatchap.Scheduler {
 			internal AutoResetEvent waiter = new AutoResetEvent(true);
 			internal readonly int jobsForWorkersLengthMask = (1 << 15) - 1;
 			internal readonly Job[] jobsForWorkers = new Job[1 << 15];
-			
+
 			public WorkerManager() {
 				jobDistributor = new Thread(JobDistributor);
 				jobsToDo = new ThreadSafeRingBuffer_MultiProducer_SingleConsumerInt(15, jobDistributor);
@@ -48,12 +48,12 @@ namespace Ashkatchap.Scheduler {
 							waiter.WaitOne(1);
 						}
 					}
-					
+
 					// try reorganizing jobs if needed
 					// ---
 				}
 			}
-			
+
 			private bool DistributeJob(int jobArrayIndex, int jobId) {
 				for (int i = 0; i < Math.Min(workers.Length, ThreadedJobs.DESIRED_NUM_CORES); i++) {
 					if (workers[i].jobsToDo.GetApproxLength() < 10) {
@@ -70,12 +70,13 @@ namespace Ashkatchap.Scheduler {
 				int nextIndex = 0;
 				while (0 == nextIndex)
 					nextIndex = Interlocked.Increment(ref nextJobIndex) & jobsForWorkersLengthMask;
-				
+
 				jobsForWorkers[nextIndex].Set(action, onException, nextIndex);
 
 				if (ThreadedJobs.FORCE_SINGLE_THREAD || !jobsToDo.Enqueue(nextIndex)) {
 					jobsForWorkers[nextIndex].Execute();
-				} else {
+				}
+				else {
 					lastActionStamp++;
 					waiter.Set();
 				}

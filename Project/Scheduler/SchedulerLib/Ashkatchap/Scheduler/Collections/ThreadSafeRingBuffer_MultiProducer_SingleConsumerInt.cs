@@ -14,7 +14,7 @@ namespace Ashkatchap.Scheduler.Collections {
 			lengthMask = (1 << powerOfTwoForCapacity) - 1;
 			this.consumer = consumer;
 		}
-		
+
 		/// <summary>
 		/// Thread safe Enqueue from any thread
 		/// </summary>
@@ -37,7 +37,7 @@ namespace Ashkatchap.Scheduler.Collections {
 			Thread.MemoryBarrier(); // _producerCursor must be written eventually now
 			return true;
 		}
-		
+
 		/// <summary>
 		/// Thread unsafe. It must always be called from only one thread
 		/// </summary>

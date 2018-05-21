@@ -25,7 +25,7 @@ public class Program {
 
 	static public int arraySize = 1000;
 	static public bool singleThread = false;
-	static public int NUM_THREADS = 1;
+	static public int NUM_THREADS = 8;
 
 	static public int loopsDoSomething = 10000;
 	

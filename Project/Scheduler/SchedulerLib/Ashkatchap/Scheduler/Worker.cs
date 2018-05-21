@@ -33,7 +33,7 @@ namespace Ashkatchap.Scheduler {
 					while (ThreadedJobs.FORCE_SINGLE_THREAD) {
 						Thread.Sleep(30);
 					}
-					
+
 					int indexToDo;
 					if (jobsToDo.TryDequeue(out indexToDo)) {
 						Job job = executor.jobsForWorkers[indexToDo];
@@ -45,7 +45,8 @@ namespace Ashkatchap.Scheduler {
 								continue;
 							}
 						}
-					} else {
+					}
+					else {
 						executor.waiter.Set();
 						waiter.WaitOne();
 					}
