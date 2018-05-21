@@ -29,8 +29,8 @@ namespace Ashkatchap.UnityScheduler {
 			Instance.QueueCallback(queue, method);
 		}
 
-		public static bool QueueMultithreadJob(Action callback, out QueuedJob jobReference) {
-			return ThreadedJobs.QueueMultithreadJob(callback, out jobReference);
+		public static QueuedJob QueueMultithreadJob(Action callback) {
+			return ThreadedJobs.QueueMultithreadJob(callback);
 		}
 	}
 }

@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using System.Threading;
 
 namespace Ashkatchap.Scheduler.Collections {
 	internal static class Volatile {

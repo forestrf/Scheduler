@@ -5,7 +5,7 @@ using System.Threading;
 namespace Ashkatchap.Scheduler {
 	public class Updater {
 		private readonly UnorderedList<TimedAction> actionsStillWaiting = new UnorderedList<TimedAction>();
-		private readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumerStruct<TimedAction> queuedUpdateCallbacks;
+		private readonly RingBuffer_MultiProducer_SingleConsumerStruct<TimedAction> queuedUpdateCallbacks;
 		private readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];
 		private readonly UnorderedList<UpdateReference>[] delayedRemoves = new UnorderedList<UpdateReference>[256];
 		private readonly Thread mainThread;
@@ -17,7 +17,7 @@ namespace Ashkatchap.Scheduler {
 				recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(initialSize, stepIncrement);
 				delayedRemoves[i] = new UnorderedList<UpdateReference>(initialSize, stepIncrement);
 			}
-			queuedUpdateCallbacks = new ThreadSafeRingBuffer_MultiProducer_SingleConsumerStruct<TimedAction>(9, mainThread);
+			queuedUpdateCallbacks = new RingBuffer_MultiProducer_SingleConsumerStruct<TimedAction>(9, mainThread);
 		}
 
 
@@ -88,9 +88,7 @@ namespace Ashkatchap.Scheduler {
 				else actionsStillWaiting.Add(timedAction);
 			}
 		}
-
-
-
+		
 		public UpdateReference AddUpdateCallback(Action method, byte order = 127) {
 			var aw = new ActionWrapped(nextRecurrentId++, method);
 			recurrentCallbacks[order].Add(aw);
@@ -110,15 +108,19 @@ namespace Ashkatchap.Scheduler {
 			queuedUpdateCallbacks.Enqueue(new TimedAction(method, secondsToWait));
 		}
 
-		private struct TimedAction {
+		private struct TimedAction : IEquatable<TimedAction> {
 			public Action action;
-			public double secondsToWait;
+			public float secondsToWait;
 			private long timestampStart;
 
-			public TimedAction(Action action, double secondsToWait) {
+			public TimedAction(Action action, float secondsToWait) {
 				this.action = action;
 				this.secondsToWait = secondsToWait;
 				this.timestampStart = TimeCounter.GetTimestamp();
+			}
+
+			public bool Equals(TimedAction other) {
+				return action == other.action && secondsToWait == other.secondsToWait && timestampStart == other.timestampStart;
 			}
 
 			public bool ItsTime() {

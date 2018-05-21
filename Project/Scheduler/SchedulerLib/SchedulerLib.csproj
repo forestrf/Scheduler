@@ -35,18 +35,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Ashkatchap\Scheduler\Collections\Volatile.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer_SingleProducer_SingleConsumerInt.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer_MultiProducer_SingleConsumerInt.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer_MultiProducer_SingleConsumer.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer_MultiProducer_SingleConsumerStruct.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\RingBuffer_SingleProducer_SingleConsumerStruct.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\RingBuffer_MultiProducer_SingleConsumer.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\RingBuffer_MultiProducer_SingleConsumerStruct.cs" />
     <Compile Include="Ashkatchap\Scheduler\Collections\UnorderedList.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Executor.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Threaded\Executor.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Threaded\Job.cs" />
     <Compile Include="Ashkatchap\Scheduler\TimeCounter.cs" />
     <Compile Include="Ashkatchap\Scheduler\Updater.cs" />
-    <Compile Include="Ashkatchap\Scheduler\QueuedJob.cs" />
-    <Compile Include="Ashkatchap\Scheduler\ThreadedJobs.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Threaded\QueuedJob.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Threaded\ThreadedJobs.cs" />
     <Compile Include="Ashkatchap\Scheduler\UpdateReference.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Worker.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Threaded\Worker.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

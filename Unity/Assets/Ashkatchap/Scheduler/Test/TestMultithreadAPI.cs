@@ -62,7 +62,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 		Ashkatchap.Scheduler.ThreadedJobs.DESIRED_NUM_CORES = NUM_THREADS;
 		Profiler.BeginSample("Add Multithread");
 		for (int i = 0; i < jobs.Length; i++) {
-			Ashkatchap.Scheduler.ThreadedJobs.QueueMultithreadJob(MultithreadDoNothingCached, out jobs[i]);
+			jobs[i] = Ashkatchap.Scheduler.ThreadedJobs.QueueMultithreadJob(MultithreadDoNothingCached);
 		}
 		Profiler.EndSample();
 	}

@@ -6,7 +6,7 @@ namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
 		public class WorkerManager {
 			internal volatile byte lastActionStamp = 0;
-			internal readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumerInt jobsToDo;
+			internal readonly RingBuffer_MultiProducer_SingleConsumerStruct<int> jobsToDo;
 			private readonly Worker[] workers;
 			internal readonly Thread jobDistributor;
 			internal AutoResetEvent waiter = new AutoResetEvent(true);
@@ -15,7 +15,7 @@ namespace Ashkatchap.Scheduler {
 
 			public WorkerManager() {
 				jobDistributor = new Thread(JobDistributor);
-				jobsToDo = new ThreadSafeRingBuffer_MultiProducer_SingleConsumerInt(15, jobDistributor);
+				jobsToDo = new RingBuffer_MultiProducer_SingleConsumerStruct<int>(15, jobDistributor);
 				for (int i = 0; i < jobsForWorkers.Length; i++) {
 					jobsForWorkers[i] = new Job();
 				}
@@ -39,7 +39,7 @@ namespace Ashkatchap.Scheduler {
 			private void JobDistributor() {
 				while (true) {
 					if (!waiter.WaitOne(3000)) {
-						Console.WriteLine("hmmm");
+						//Console.WriteLine("hmmm");
 					}
 					// There are queued jobs to distribute, don't end the loop until they are distributed
 					int job;
@@ -49,14 +49,15 @@ namespace Ashkatchap.Scheduler {
 						}
 					}
 
-					// try reorganizing jobs if needed
+					// try reorganizing jobs if needed?
 					// ---
 				}
 			}
 
+			private int maxNumberOfQueuedJobsInWorker = 10; // should be tuned
 			private bool DistributeJob(int jobArrayIndex, int jobId) {
-				for (int i = 0; i < Math.Min(workers.Length, ThreadedJobs.DESIRED_NUM_CORES); i++) {
-					if (workers[i].jobsToDo.GetApproxLength() < 10) {
+				for (int i = 0; i < Math.Min(workers.Length, ThreadedJobs.CORES_IN_USE); i++) {
+					if (workers[i].jobsToDo.GetApproxLength() < maxNumberOfQueuedJobsInWorker) {
 						workers[i].jobsToDo.Enqueue(jobArrayIndex);
 						workers[i].waiter.Set();
 						return true;
@@ -67,11 +68,12 @@ namespace Ashkatchap.Scheduler {
 
 			int nextJobIndex = 0;
 			public QueuedJob QueueMultithreadJob(Action action, Action<Exception> onException) {
+				// Not very well done
 				int nextIndex = 0;
-				while (0 == nextIndex)
+				while (0 == nextIndex || 0 != jobsForWorkers[nextIndex].jobId)
 					nextIndex = Interlocked.Increment(ref nextJobIndex) & jobsForWorkersLengthMask;
-
-				jobsForWorkers[nextIndex].Set(action, onException, nextIndex);
+				
+				jobsForWorkers[nextIndex].Set(action, onException);
 
 				if (ThreadedJobs.FORCE_SINGLE_THREAD || !jobsToDo.Enqueue(nextIndex)) {
 					jobsForWorkers[nextIndex].Execute();
@@ -80,7 +82,7 @@ namespace Ashkatchap.Scheduler {
 					lastActionStamp++;
 					waiter.Set();
 				}
-				return new QueuedJob(jobsForWorkers[nextIndex].jobId, nextIndex, jobsForWorkers);
+				return new QueuedJob(jobsForWorkers[nextIndex]);
 			}
 		}
 	}

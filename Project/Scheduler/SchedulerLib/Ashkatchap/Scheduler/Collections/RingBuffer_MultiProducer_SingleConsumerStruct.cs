@@ -1,15 +1,15 @@
-using System.Runtime.InteropServices;
+using System;
 using System.Threading;
 
 namespace Ashkatchap.Scheduler.Collections {
-	internal class ThreadSafeRingBuffer_MultiProducer_SingleConsumer<T> where T : class {
+	internal class RingBuffer_MultiProducer_SingleConsumerStruct<T> where T : struct, IEquatable<T> {
 		private readonly T[] _entries;
 		private readonly int lengthMask;
 		private int _consumerCursor = 0;
 		private Volatile.PaddedVolatileInt _producerCursor = new Volatile.PaddedVolatileInt();
 		private Thread consumer;
 
-		public ThreadSafeRingBuffer_MultiProducer_SingleConsumer(ushort powerOfTwoForCapacity, Thread consumer) {
+		public RingBuffer_MultiProducer_SingleConsumerStruct(ushort powerOfTwoForCapacity, Thread consumer) {
 			_entries = new T[1 << powerOfTwoForCapacity];
 			lengthMask = (1 << powerOfTwoForCapacity) - 1;
 			this.consumer = consumer;
@@ -19,7 +19,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// Thread safe Enqueue from any thread
 		/// </summary>
 		public bool Enqueue(T obj) {
-			if (null == obj) return false; // Null not allowed
+			if (default(T).Equals(obj)) return false; // Null not allowed
 
 			int indexToWriteOn;
 			int nextIndex;
@@ -51,8 +51,8 @@ namespace Ashkatchap.Scheduler.Collections {
 			}
 
 			item = _entries[_consumerCursor];
-			if (null != item) {
-				_entries[_consumerCursor] = null;
+			if (!default(T).Equals(item)) {
+				_entries[_consumerCursor] = default(T);
 				_consumerCursor = _consumerCursor == _entries.Length - 1 ? 0 : _consumerCursor + 1;
 				return true;
 			}
