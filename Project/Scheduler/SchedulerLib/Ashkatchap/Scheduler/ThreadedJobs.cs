@@ -21,8 +21,8 @@ namespace Ashkatchap.Scheduler {
 			executor = null;
 		}
 
-		public static bool QueueMultithreadJob(Action callback, out QueuedJob jobReference, Action<Action> OnFinished = null, Action<Exception> onException = null) {
-			return executor.QueueMultithreadJob(callback, onException, out jobReference);
+		public static QueuedJob QueueMultithreadJob(Action callback, Action<Action> OnFinished = null, Action<Exception> onException = null) {
+			return executor.QueueMultithreadJob(callback, onException);
 		}
 	}
 }

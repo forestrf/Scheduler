@@ -6,14 +6,19 @@ namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
 		public class WorkerManager {
 			internal volatile byte lastActionStamp = 0;
-			internal readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob> jobsToDo;
+			internal readonly ThreadSafeRingBuffer_MultiProducer_SingleConsumerInt jobsToDo;
 			private readonly Worker[] workers;
-			private readonly Thread jobDistributor;
+			internal readonly Thread jobDistributor;
 			internal AutoResetEvent waiter = new AutoResetEvent(true);
+			internal readonly int jobsForWorkersLengthMask = (1 << 15) - 1;
+			internal readonly Job[] jobsForWorkers = new Job[1 << 15];
 			
 			public WorkerManager() {
 				jobDistributor = new Thread(JobDistributor);
-				jobsToDo = new ThreadSafeRingBuffer_MultiProducer_SingleConsumer<QueuedJob>(15, jobDistributor);
+				jobsToDo = new ThreadSafeRingBuffer_MultiProducer_SingleConsumerInt(15, jobDistributor);
+				for (int i = 0; i < jobsForWorkers.Length; i++) {
+					jobsForWorkers[i] = new Job();
+				}
 
 				int numWorkers = Math.Max(1, ThreadedJobs.AVAILABLE_CORES);
 				workers = new Worker[numWorkers];
@@ -37,10 +42,10 @@ namespace Ashkatchap.Scheduler {
 						Console.WriteLine("hmmm");
 					}
 					// There are queued jobs to distribute, don't end the loop until they are distributed
-					QueuedJob job;
+					int job;
 					while (jobsToDo.TryDequeue(out job)) {
-						while (!DistributeJob(job)) {
-							Thread.Sleep(0);
+						while (!DistributeJob(job, jobsForWorkers[job].jobId)) {
+							waiter.WaitOne(1);
 						}
 					}
 					
@@ -48,11 +53,11 @@ namespace Ashkatchap.Scheduler {
 					// ---
 				}
 			}
-
-			private bool DistributeJob(QueuedJob job) {
-				for (int i = 0; i < workers.Length; i++) {
-					if (null == workers[i].pendingJob) {
-						Interlocked.Exchange(ref workers[i].pendingJob, job);
+			
+			private bool DistributeJob(int jobArrayIndex, int jobId) {
+				for (int i = 0; i < Math.Min(workers.Length, ThreadedJobs.DESIRED_NUM_CORES); i++) {
+					if (workers[i].jobsToDo.GetApproxLength() < 10) {
+						workers[i].jobsToDo.Enqueue(jobArrayIndex);
 						workers[i].waiter.Set();
 						return true;
 					}
@@ -60,19 +65,21 @@ namespace Ashkatchap.Scheduler {
 				return false;
 			}
 
-			public bool QueueMultithreadJob(Action job, Action<Exception> onException, out QueuedJob queuedJob) {
-				queuedJob = new QueuedJob(job, onException);
+			int nextJobIndex = 0;
+			public QueuedJob QueueMultithreadJob(Action action, Action<Exception> onException) {
+				int nextIndex = 0;
+				while (0 == nextIndex)
+					nextIndex = Interlocked.Increment(ref nextJobIndex) & jobsForWorkersLengthMask;
+				
+				jobsForWorkers[nextIndex].Set(action, onException, nextIndex);
 
-				if (ThreadedJobs.FORCE_SINGLE_THREAD) {
-					queuedJob.Execute();
-					return true;
+				if (ThreadedJobs.FORCE_SINGLE_THREAD || !jobsToDo.Enqueue(nextIndex)) {
+					jobsForWorkers[nextIndex].Execute();
 				} else {
-					queuedJob = new QueuedJob(job, onException);
-					jobsToDo.Enqueue(queuedJob);
 					lastActionStamp++;
 					waiter.Set();
-					return true;
 				}
+				return new QueuedJob(jobsForWorkers[nextIndex].jobId, nextIndex, jobsForWorkers);
 			}
 		}
 	}

@@ -8,7 +8,6 @@ public class Program {
 		updater = new Updater();
 		ThreadedJobs.MultithreadingStart();
 		
-		Program.Awake();
 		Program.Start();
 		for (int i = 0; true; i++) {
 			var w = Stopwatch.StartNew();
@@ -20,19 +19,17 @@ public class Program {
 	}
 
 	static UpdateReference[] nothingUpdate;
-	static UpdateReference AU;
+	static UpdateReference AU, DU;
 	static UpdateReference[] BU, CU;
 	static QueuedJob[] jobs;
 
-	static public int arraySize = 10000;
-	static public bool singleThread = true;
-	static public int NUM_THREADS = 8;
+	static public int arraySize = 1000;
+	static public bool singleThread = false;
+	static public int NUM_THREADS = 1;
+
+	static public int loopsDoSomething = 10000;
 	
-	
-	static Action MultithreadDoNothingCached;
-	private static void Awake() {
-		MultithreadDoNothingCached = DoNothing;
-	}
+
 
 	static void Start() {
 		nothingUpdate = new UpdateReference[arraySize];
@@ -40,6 +37,7 @@ public class Program {
 		CU = new UpdateReference[arraySize];
 		jobs = new QueuedJob[arraySize];
 		AU = updater.AddUpdateCallback(A, 126);
+		DU = updater.AddUpdateCallback(D, 129);
 		for (int i = 0; i < arraySize; i++) {
 			nothingUpdate[i] = updater.AddUpdateCallback(DoNothing, 126);
 			BU[i] = updater.AddUpdateCallback(B, 127);
@@ -65,13 +63,23 @@ public class Program {
 
 	static int i = 0;
 	static void B() {
-		ThreadedJobs.QueueMultithreadJob(MultithreadDoNothingCached, out jobs[i], null);
+		jobs[i] = ThreadedJobs.QueueMultithreadJob(DoSomething, null);
 		i = (i + 1) % BU.Length;
 	}
 	static void C() {
 		jobs[i].WaitForFinish();
 		i = (i + 1) % BU.Length;
 	}
+	static void D() {
+		if (finalCount != arraySize) Console.Write("Error!");
+		finalCount = 0;
+	}
 
 	static void DoNothing() { }
+
+	static int finalCount = 0;
+	static void DoSomething() {
+		System.Threading.Interlocked.Increment(ref finalCount);
+		for (int i = 0; i < loopsDoSomething; i++) ;
+	}
 }

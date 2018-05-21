@@ -34,7 +34,9 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer_SingleProducer_SingleConsumerInt.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer_MultiProducer_SingleConsumerInt.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeRingBuffer_MultiProducer_SingleConsumer.cs" />
     <Compile Include="Ashkatchap\Scheduler\Collections\UnorderedList.cs" />
     <Compile Include="Ashkatchap\Scheduler\Executor.cs" />
     <Compile Include="Ashkatchap\Scheduler\Updater.cs" />
