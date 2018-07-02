@@ -31,8 +31,9 @@ namespace Ashkatchap.Scheduler {
 				job();
 			}
 			catch (Exception e) {
-				Console.WriteLine(e);
 				if (null != onException) onException(e);
+				else if (null != ThreadedJobs.OnException) ThreadedJobs.OnException(e);
+				else Console.WriteLine(e);
 			}
 			jobId = 0;
 			are.Set();

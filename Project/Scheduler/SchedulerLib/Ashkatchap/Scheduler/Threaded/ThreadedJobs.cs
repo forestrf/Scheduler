@@ -2,6 +2,7 @@
 
 namespace Ashkatchap.Scheduler {
 	public static class ThreadedJobs {
+		public static Action<Exception> OnException;
 		public static bool FORCE_SINGLE_THREAD = false;
 		public static readonly int AVAILABLE_CORES = Environment.ProcessorCount;
 		public static int DESIRED_NUM_CORES = AVAILABLE_CORES;
@@ -21,8 +22,15 @@ namespace Ashkatchap.Scheduler {
 			executor = null;
 		}
 
+		private static Job tmpJpb = new Job();
 		public static QueuedJob QueueMultithreadJob(Action callback, Action<Action> OnFinished = null, Action<Exception> onException = null) {
-			return executor.QueueMultithreadJob(callback, onException);
+			if (null != executor) {
+				return executor.QueueMultithreadJob(callback, onException);
+			} else {
+				tmpJpb.Set(callback, onException);
+				tmpJpb.Execute();
+				return new QueuedJob(tmpJpb);
+			}
 		}
 	}
 }
