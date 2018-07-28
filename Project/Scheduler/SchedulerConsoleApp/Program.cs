@@ -8,13 +8,18 @@ public class Program {
 		updater = new Updater();
 		ThreadedJobs.MultithreadingStart();
 		
-		Program.Start();
+		updater.QueueCallback(() => { Console.WriteLine("Hi 1"); }, 1);
+		updater.QueueCallback(() => { Console.WriteLine("Hi 2"); }, 2);
+		updater.QueueCallback(() => { Console.WriteLine("Hi 3"); }, 3);
+		updater.QueueCallback(() => { Console.WriteLine("Hi 4"); }, 4);
+
+		//Program.Start();
 		for (int i = 0; true; i++) {
 			var w = Stopwatch.StartNew();
 			for (int j = 0; j < 10; j++) {
 				updater.Execute(null);
 			}
-			Console.WriteLine((w.Elapsed.TotalMilliseconds / 10f) + "ms");
+			//Console.WriteLine((w.Elapsed.TotalMilliseconds / 10f) + "ms");
 		}
 	}
 

@@ -1,62 +1,9 @@
 ﻿using Ashkatchap.Scheduler;
-using Ashkatchap.UnityScheduler.Behaviours;
 using System;
 using UnityEngine;
-using UnityEngine.Profiling;
 
-namespace Ashkatchap.UnityScheduler {
-	/// <summary>
-	/// Executing ordered
-	/// </summary>
-	public enum QueueOrder {
-		/// <summary>
-		/// Execute before any FixedUpdate script. It is intended to only read information before any script can makes changes to the scene, but not making changes is not enforced
-		/// </summary>
-		PreFixedUpdate,
-		/// <summary>
-		/// FixedUpdate
-		/// </summary>
-		FixedUpdate,
-		/// <summary>
-		/// Execute after any FixedUpdate script
-		/// </summary>
-		PostFixedUpdate,
-
-		/// <summary>
-		/// Execute after a physics step is executed (FixedUpdate, Physics execution and then this)
-		/// It will be executed in FixedUpdate or Update given the nature of how FixedUpdate works
-		/// </summary>
-		AfterFixedUpdate,
-
-		/// <summary>
-		/// Execute before any Update script. It is intended to only read information before any script can makes changes to the scene, but not making changes is not enforced
-		/// </summary>
-		PreUpdate,
-		/// <summary>
-		/// Update
-		/// </summary>
-		Update,
-		/// <summary>
-		/// Execute after any Update script
-		/// </summary>
-		PostUpdate,
-
-		/// <summary>
-		/// Execute before any LateUpdate script. It is intended to only read information after the animations are updated, but not making changes is not enforced
-		/// </summary>
-		PreLateUpdate,
-		/// <summary>
-		/// LateUpdate
-		/// </summary>
-		LateUpdate,
-		/// <summary>
-		/// Execute after any LateUpdate script
-		/// </summary>
-		PostLateUpdate
-	};
-
-
-	public partial class FrameUpdater : MonoBehaviour {
+namespace Ashkatchap.UnityScheduler.Behaviours {
+	public class FrameUpdater : MonoBehaviour {
 		private FirstUpdaterBehaviour firstUpdater;
 		private LastUpdaterBehaviour lastUpdater;
 
@@ -140,6 +87,7 @@ namespace Ashkatchap.UnityScheduler {
 		public UpdateReference AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
 			return new UpdateReference(queue, GetUpdaterList(queue).AddUpdateCallback(method, order));
 		}
+
 		public void RemoveUpdateCallback(UpdateReference reference) {
 			var updater = GetUpdaterList(reference.queue);
 			updater.RemoveUpdateCallback(reference.reference);
@@ -149,7 +97,11 @@ namespace Ashkatchap.UnityScheduler {
 			GetUpdaterList(queue).QueueCallback(method);
 			Debug.Log("Queued Update method");
 		}
-		
+
+		internal void QueueCallback(QueueOrder queue, Action method, float secondsToWait) {
+			GetUpdaterList(queue).QueueCallback(method, secondsToWait);
+		}
+
 		private Updater GetUpdaterList(QueueOrder queue) {
 			switch (queue) {
 				default:

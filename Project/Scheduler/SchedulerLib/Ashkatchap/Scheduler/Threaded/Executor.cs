@@ -72,7 +72,7 @@ namespace Ashkatchap.Scheduler {
 				int nextIndex = 0;
 				while (0 == nextIndex || 0 != jobsForWorkers[nextIndex].jobId)
 					nextIndex = Interlocked.Increment(ref nextJobIndex) & jobsForWorkersLengthMask;
-				
+
 				jobsForWorkers[nextIndex].Set(action, onException);
 
 				if (ThreadedJobs.FORCE_SINGLE_THREAD || !jobsToDo.Enqueue(nextIndex)) {

@@ -10,7 +10,11 @@ namespace Ashkatchap.Scheduler {
 		private readonly UnorderedList<UpdateReference>[] delayedRemoves = new UnorderedList<UpdateReference>[256];
 		private readonly Thread mainThread;
 		private int nextRecurrentId;
+		public int timesUpdated { get; private set; }
 
+		/// <summary>
+		/// Create a new Updater. The current thread will be considered the main thread.
+		/// </summary>
 		public Updater(int initialSize = 16, int stepIncrement = 16) {
 			mainThread = Thread.CurrentThread;
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
@@ -20,13 +24,13 @@ namespace Ashkatchap.Scheduler {
 			queuedUpdateCallbacks = new RingBuffer_MultiProducer_SingleConsumerStruct<TimedAction>(9, mainThread);
 		}
 
-
-		public bool InMainThread() {
+		public bool NowInMainThread() {
 			return mainThread == Thread.CurrentThread;
 		}
 
 		/// <param name="onException">To avoid generating garbage use a static method or a cached delegate</param>
 		public void Execute(Action<Exception> onException) {
+			timesUpdated++;
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
 				var queue = recurrentCallbacks[i];
 
@@ -88,7 +92,7 @@ namespace Ashkatchap.Scheduler {
 				else actionsStillWaiting.Add(timedAction);
 			}
 		}
-		
+
 		public UpdateReference AddUpdateCallback(Action method, byte order = 127) {
 			var aw = new ActionWrapped(nextRecurrentId++, method);
 			recurrentCallbacks[order].Add(aw);
