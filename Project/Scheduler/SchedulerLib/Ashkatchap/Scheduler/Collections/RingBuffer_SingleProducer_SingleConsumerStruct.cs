@@ -7,8 +7,8 @@ namespace Ashkatchap.Scheduler.Collections {
 		private readonly int lengthMask;
 		private int _consumerCursor = 0;
 		private int _producerCursor = 0;
-		private Thread consumer;
-		private Thread producer;
+		private readonly Thread consumer;
+		private readonly Thread producer;
 
 		public RingBuffer_SingleProducer_SingleConsumerStruct(ushort powerOfTwoForCapacity, Thread producer, Thread consumer) {
 			_entries = new T[1 << powerOfTwoForCapacity];

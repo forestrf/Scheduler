@@ -7,7 +7,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		private readonly int lengthMask;
 		private int _consumerCursor = 0;
 		private Volatile.PaddedVolatileInt _producerCursor = new Volatile.PaddedVolatileInt();
-		private Thread consumer;
+		private readonly Thread consumer;
 
 		public RingBuffer_MultiProducer_SingleConsumerStruct(ushort powerOfTwoForCapacity, Thread consumer) {
 			_entries = new T[1 << powerOfTwoForCapacity];
@@ -46,7 +46,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		public bool TryDequeue(out T item) {
 			if (Thread.CurrentThread != consumer) {
 				item = default(T);
-				System.Console.WriteLine("Not allowed");
+				Console.WriteLine("Not allowed");
 				return false;
 			}
 
@@ -57,6 +57,10 @@ namespace Ashkatchap.Scheduler.Collections {
 				return true;
 			}
 			return false;
+		}
+
+		internal void Clear() {
+			while (TryDequeue(out var item)) continue;
 		}
 	}
 }

@@ -6,7 +6,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		private readonly int lengthMask;
 		private int _consumerCursor = 0;
 		private Volatile.PaddedVolatileInt _producerCursor = new Volatile.PaddedVolatileInt();
-		private Thread consumer;
+		private readonly Thread consumer;
 
 		public RingBuffer_MultiProducer_SingleConsumer(ushort powerOfTwoForCapacity, Thread consumer) {
 			_entries = new T[1 << powerOfTwoForCapacity];

@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
-		public class WorkerManager {
+		public class WorkerManager : IDisposable {
 			internal volatile byte lastActionStamp = 0;
 			internal readonly RingBuffer_MultiProducer_SingleConsumerStruct<int> jobsToDo;
 			private readonly Worker[] workers;
@@ -15,7 +15,7 @@ namespace Ashkatchap.Scheduler {
 
 			public WorkerManager() {
 				jobDistributor = new Thread(JobDistributor);
-				jobsToDo = new RingBuffer_MultiProducer_SingleConsumerStruct<int>(15, jobDistributor);
+				jobsToDo = new RingBuffer_MultiProducer_SingleConsumerStruct<int>(16, jobDistributor);
 				for (int i = 0; i < jobsForWorkers.Length; i++) {
 					jobsForWorkers[i] = new Job();
 				}
@@ -83,6 +83,10 @@ namespace Ashkatchap.Scheduler {
 					waiter.Set();
 				}
 				return new QueuedJob(jobsForWorkers[nextIndex]);
+			}
+
+			public void Dispose() {
+				waiter.Close();
 			}
 		}
 	}

@@ -21,7 +21,7 @@ namespace Ashkatchap.Scheduler {
 				recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(initialSize, stepIncrement);
 				delayedRemoves[i] = new UnorderedList<UpdateReference>(initialSize, stepIncrement);
 			}
-			queuedUpdateCallbacks = new RingBuffer_MultiProducer_SingleConsumerStruct<TimedAction>(9, mainThread);
+			queuedUpdateCallbacks = new RingBuffer_MultiProducer_SingleConsumerStruct<TimedAction>(16, mainThread);
 		}
 
 		public bool NowInMainThread() {
@@ -36,11 +36,11 @@ namespace Ashkatchap.Scheduler {
 
 				// Execute Delayed Deletes
 				var delayedQueue = delayedRemoves[i];
-				if (delayedQueue.Size > 0) {
+				if (delayedQueue.Count > 0) {
 					lock (delayedQueue) {
-						while (delayedQueue.Size > 0) {
+						while (delayedQueue.Count > 0) {
 							var reference = delayedQueue.ExtractLast();
-							for (int j = 0; j < queue.Size; j++) {
+							for (int j = 0; j < queue.Count; j++) {
 								if (queue.elements[j].id == reference.id) {
 									queue.RemoveAt(j);
 									break;
@@ -50,7 +50,7 @@ namespace Ashkatchap.Scheduler {
 					}
 				}
 
-				for (int j = 0; j < queue.Size; j++) {
+				for (int j = 0; j < queue.Count; j++) {
 					try {
 						queue.elements[j].action();
 					}
@@ -62,7 +62,7 @@ namespace Ashkatchap.Scheduler {
 			}
 
 
-			for (int i = 0; i < actionsStillWaiting.Size;) {
+			for (int i = 0; i < actionsStillWaiting.Count;) {
 				if (actionsStillWaiting[i].ItsTime()) {
 					try {
 						actionsStillWaiting[i].action.Invoke();
@@ -140,6 +140,14 @@ namespace Ashkatchap.Scheduler {
 				this.id = id;
 				this.action = action;
 			}
+		}
+
+		public void Clear() {
+			actionsStillWaiting.Clear();
+			queuedUpdateCallbacks.Clear();
+			foreach (var elem in recurrentCallbacks) elem.Clear();
+			foreach (var elem in delayedRemoves) elem.Clear();
+			timesUpdated = 0;
 		}
 	}
 }

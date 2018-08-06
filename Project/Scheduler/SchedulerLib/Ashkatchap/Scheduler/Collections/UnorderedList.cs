@@ -13,7 +13,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		public static readonly int DEFAULT_INITIAL_LENGTH = 64;
 		public static readonly int DEFAULT_STEP_INCREMENT = 64;
 
-		public int Size;
+		public int Count;
 		int step_increment;
 		public T[] elements;
 
@@ -36,7 +36,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		public UnorderedList(int initialLength, int stepIncrement) : this(new T[initialLength], 0, stepIncrement) { }
 
 		public UnorderedList(T[] internalArray, int internalLength, int stepIncrement) {
-			this.Size = internalLength;
+			this.Count = internalLength;
 			this.elements = internalArray;
 			this.step_increment = stepIncrement;
 		}
@@ -52,14 +52,14 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <param name="element">Element to Add</param>
 		/// <returns>true if sucess, false if can't increase the array elements</returns>
 		public bool Add(T element) {
-			if (Size == elements.Length) {
+			if (Count == elements.Length) {
 				if (step_increment == 0) return false;
 
-				T[] newElements = new T[Size + step_increment];
+				T[] newElements = new T[Count + step_increment];
 				elements.CopyTo(newElements, 0);
 				elements = newElements;
 			}
-			elements[Size++] = element;
+			elements[Count++] = element;
 			return true;
 		}
 
@@ -69,8 +69,8 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <param name="element">Element to Add</param>
 		/// <returns>true if sucess, false if can't increase the array elements</returns>
 		public bool Insert(int index, T element) {
-			if (RequestSpace(1 + (index - Size + 1 > 0 ? index - Size + 1 : 0))) {
-				elements[Size++] = elements[index];
+			if (RequestSpace(1 + (index - Count + 1 > 0 ? index - Count + 1 : 0))) {
+				elements[Count++] = elements[index];
 				elements[index] = element;
 				return true;
 			}
@@ -102,8 +102,8 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <param name="length">Number of elements</param>
 		public bool AddBlock(T[] element, int offset, int length) {
 			if (RequestSpace(length)) {
-				Array.Copy(element, offset, elements, Size, length);
-				Size += length;
+				Array.Copy(element, offset, elements, Count, length);
+				Count += length;
 				return true;
 			}
 			else return false;
@@ -116,10 +116,10 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <param name="length">Number of elements than need to fit in the array</param>
 		/// <returns>True if sucess, false if can't increase the array elements</returns>
 		public bool RequestSpace(int length) {
-			if (Size + length > elements.Length) {
+			if (Count + length > elements.Length) {
 				if (step_increment == 0) return false;
 
-				int noCaben = Size + length - elements.Length;
+				int noCaben = Count + length - elements.Length;
 				int extra = step_increment * ((int) (noCaben / step_increment) + 1);
 				T[] newElements = new T[elements.Length + extra];
 				elements.CopyTo(newElements, 0);
@@ -135,7 +135,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <returns>True if sucess, false if can't increase the array elements</returns>
 		public bool EnsureCapacity(int totalLength) {
 			if (totalLength > elements.Length) {
-				return RequestSpace(totalLength - Size);
+				return RequestSpace(totalLength - Count);
 			}
 			return true;
 		}
@@ -147,7 +147,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <returns>True if sucess, false if can't increase the array elements</returns>
 		public bool SetLength(int totalLength) {
 			if (EnsureCapacity(totalLength)) {
-				Size = totalLength;
+				Count = totalLength;
 				return true;
 			}
 			return false;
@@ -160,8 +160,8 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <param name="index">Index of the element to delete. It must exists and be occupied</param>
 		/// <returns>Index of the element that changed to fill the removed place. Same as index</returns>
 		public bool RemoveAt(int index) {
-			elements[index] = elements[--Size];
-			elements[Size] = default(T);
+			elements[index] = elements[--Count];
+			elements[Count] = default(T);
 			return true;
 		}
 
@@ -186,12 +186,12 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <returns>Integer with the index of the element in the array in this moment. -1 if it is not in the list. It may change after removing an element</returns>
 		public int IndexOf(T element) {
 			if (element == null) {
-				for (int i = 0; i < Size; i++) {
+				for (int i = 0; i < Count; i++) {
 					if (elements[i] == null) return i;
 				}
 			}
 			else {
-				for (int i = 0; i < Size; i++) {
+				for (int i = 0; i < Count; i++) {
 					if (element.Equals(elements[i])) return i;
 				}
 			}
@@ -214,8 +214,8 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// Do not call when Length == 0
 		/// </summary>
 		public T ExtractLast() {
-			var toReturn = elements[--Size];
-			elements[Size] = default(T);
+			var toReturn = elements[--Count];
+			elements[Count] = default(T);
 			return toReturn;
 		}
 
@@ -224,7 +224,7 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// Do not call when Length == 0
 		/// </summary>
 		public T PeekLast() {
-			return elements[Size - 1];
+			return elements[Count - 1];
 		}
 
 		/// <summary>
@@ -233,10 +233,10 @@ namespace Ashkatchap.Scheduler.Collections {
 		/// <param name="onlyResetLength">Keep references and only reset the internal Length</param>
 		public void Clear(bool onlyResetLength) {
 			if (onlyResetLength) {
-				Size = 0;
+				Count = 0;
 			}
 			else {
-				while (Size > 0) {
+				while (Count > 0) {
 					ExtractLast();
 				}
 			}
@@ -244,8 +244,8 @@ namespace Ashkatchap.Scheduler.Collections {
 
 		public override string ToString() {
 			StringBuilder s = new StringBuilder();
-			s.Append("Size: " + Size + " | ");
-			for (int i = 0; i < Size; i++) {
+			s.Append("Size: " + Count + " | ");
+			for (int i = 0; i < Count; i++) {
 				s.Append(elements[i].ToString());
 				s.Append("\n");
 			}
