@@ -1,12 +1,11 @@
-﻿using Ashkatchap.Scheduler.Collections;
-using System;
+﻿using System;
 using System.Threading;
 
 namespace Ashkatchap.Scheduler {
 	internal partial class FrameUpdater {
 		public class WorkerManager : IDisposable {
 			internal volatile byte lastActionStamp = 0;
-			internal readonly RingBuffer_MultiProducer_SingleConsumerStruct<int> jobsToDo;
+			internal readonly ThreadSafeQueue<int> jobsToDo;
 			private readonly Worker[] workers;
 			internal readonly Thread jobDistributor;
 			internal AutoResetEvent waiter = new AutoResetEvent(true);
@@ -15,7 +14,7 @@ namespace Ashkatchap.Scheduler {
 
 			public WorkerManager() {
 				jobDistributor = new Thread(JobDistributor);
-				jobsToDo = new RingBuffer_MultiProducer_SingleConsumerStruct<int>(16, jobDistributor);
+				jobsToDo = new ThreadSafeQueue<int>();
 				for (int i = 0; i < jobsForWorkers.Length; i++) {
 					jobsForWorkers[i] = new Job();
 				}
@@ -43,7 +42,7 @@ namespace Ashkatchap.Scheduler {
 					}
 					// There are queued jobs to distribute, don't end the loop until they are distributed
 					int job;
-					while (jobsToDo.TryDequeue(out job)) {
+					while (jobsToDo.Dequeue(out job)) {
 						while (!DistributeJob(job, jobsForWorkers[job].jobId)) {
 							waiter.WaitOne(1);
 						}

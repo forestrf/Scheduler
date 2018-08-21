@@ -34,10 +34,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Ashkatchap\Scheduler\Collections\Volatile.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Collections\RingBuffer_SingleProducer_SingleConsumerStruct.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Collections\RingBuffer_MultiProducer_SingleConsumer.cs" />
-    <Compile Include="Ashkatchap\Scheduler\Collections\RingBuffer_MultiProducer_SingleConsumerStruct.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\ThreadSafeQueue.cs" />
     <Compile Include="Ashkatchap\Scheduler\Collections\UnorderedList.cs" />
     <Compile Include="Ashkatchap\Scheduler\Threaded\Executor.cs" />
     <Compile Include="Ashkatchap\Scheduler\Threaded\Job.cs" />
@@ -47,6 +44,7 @@
     <Compile Include="Ashkatchap\Scheduler\Threaded\ThreadedJobs.cs" />
     <Compile Include="Ashkatchap\Scheduler\UpdateReference.cs" />
     <Compile Include="Ashkatchap\Scheduler\Threaded\Worker.cs" />
+    <Compile Include="Ashkatchap\Scheduler\Collections\CircularBuffer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

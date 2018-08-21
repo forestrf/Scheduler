@@ -4,8 +4,8 @@ using System.Threading;
 
 namespace Ashkatchap.Scheduler {
 	public class Updater {
+		private readonly ThreadSafeQueue<TimedAction> queuedUpdateCallbacks = new ThreadSafeQueue<TimedAction>();
 		private readonly UnorderedList<TimedAction> actionsStillWaiting = new UnorderedList<TimedAction>();
-		private readonly RingBuffer_MultiProducer_SingleConsumerStruct<TimedAction> queuedUpdateCallbacks;
 		private readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];
 		private readonly UnorderedList<UpdateReference>[] delayedRemoves = new UnorderedList<UpdateReference>[256];
 		private readonly Thread mainThread;
@@ -21,7 +21,6 @@ namespace Ashkatchap.Scheduler {
 				recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(initialSize, stepIncrement);
 				delayedRemoves[i] = new UnorderedList<UpdateReference>(initialSize, stepIncrement);
 			}
-			queuedUpdateCallbacks = new RingBuffer_MultiProducer_SingleConsumerStruct<TimedAction>(16, mainThread);
 		}
 
 		public bool NowInMainThread() {
@@ -79,7 +78,7 @@ namespace Ashkatchap.Scheduler {
 			}
 
 			TimedAction timedAction;
-			while (queuedUpdateCallbacks.TryDequeue(out timedAction)) {
+			while (queuedUpdateCallbacks.Dequeue(out timedAction)) {
 				if (timedAction.ItsTime()) {
 					try {
 						timedAction.action();
@@ -144,7 +143,7 @@ namespace Ashkatchap.Scheduler {
 
 		public void Clear() {
 			actionsStillWaiting.Clear();
-			queuedUpdateCallbacks.Clear();
+			while (queuedUpdateCallbacks.Dequeue(out var _)) ;
 			foreach (var elem in recurrentCallbacks) elem.Clear();
 			foreach (var elem in delayedRemoves) elem.Clear();
 			timesUpdated = 0;

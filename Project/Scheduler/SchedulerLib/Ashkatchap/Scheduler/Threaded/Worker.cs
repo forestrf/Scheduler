@@ -1,5 +1,4 @@
-﻿using Ashkatchap.Scheduler.Collections;
-using System;
+﻿using System;
 using System.Threading;
 
 namespace Ashkatchap.Scheduler {
@@ -25,17 +24,17 @@ namespace Ashkatchap.Scheduler {
 
 			int lastExecutorPriorityStamp;
 
-			internal RingBuffer_SingleProducer_SingleConsumerStruct<int> jobsToDo;
+			internal ThreadSafeQueue<int> jobsToDo;
 
 			private void ThreadMethod() {
-				jobsToDo = new RingBuffer_SingleProducer_SingleConsumerStruct<int>(15, executor.jobDistributor, Thread.CurrentThread);
+				jobsToDo = new ThreadSafeQueue<int>();
 				while (true) {
 					while (ThreadedJobs.FORCE_SINGLE_THREAD) {
 						Thread.Sleep(30);
 					}
 
 					int indexToDo;
-					if (jobsToDo.TryDequeue(out indexToDo)) {
+					if (jobsToDo.Dequeue(out indexToDo)) {
 						Job job = executor.jobsForWorkers[indexToDo];
 						if (0 != job.jobId) {
 							executor.jobsForWorkers[indexToDo].Execute();

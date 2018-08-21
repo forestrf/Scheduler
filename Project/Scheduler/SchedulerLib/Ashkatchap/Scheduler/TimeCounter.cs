@@ -23,7 +23,8 @@ namespace Ashkatchap {
 		/// <summary>
 		/// Capture the current timestamp. Use <see cref="ElapsedSeconds"/> to obtain the seconds elapsed between two of them
 		/// Not compatible between different machines
-		/// It is possible for two consecutive timestamps to not be timedly ordered
+		/// It is possible for two consecutive timestamps to not be timedly ordered.
+		/// Using DateTime or Unity's Time.realTimeSinceStartup is faster, but this will not freeze during short timespans. Clock drifts over time.
 		/// </summary>
 		public static long GetTimestamp() {
 			return Stopwatch.GetTimestamp();
