@@ -70,7 +70,9 @@ namespace Ashkatchap.Scheduler {
 						Console.WriteLine(e);
 						if (null != onException) onException.Invoke(e);
 					}
-					actionsStillWaiting.RemoveAt(i);
+					finally {
+						actionsStillWaiting.RemoveAt(i);
+					}
 				}
 				else {
 					i++;
@@ -105,7 +107,7 @@ namespace Ashkatchap.Scheduler {
 		}
 
 		public void QueueCallback(Action method) {
-			queuedUpdateCallbacks.Enqueue(new TimedAction(method, 0));
+			QueueCallback(method, 0);
 		}
 		public void QueueCallback(Action method, float secondsToWait) {
 			queuedUpdateCallbacks.Enqueue(new TimedAction(method, secondsToWait));
