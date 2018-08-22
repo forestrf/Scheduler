@@ -1,7 +1,5 @@
-﻿using Ashkatchap.Scheduler;
-using Ashkatchap.UnityScheduler.Behaviours;
+﻿using Ashkatchap.UnityScheduler.Behaviours;
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Ashkatchap.UnityScheduler {
@@ -82,39 +80,6 @@ namespace Ashkatchap.UnityScheduler {
 		}
 		public static void QueueCallback(QueueOrder queue, Action method, float secondsToWait) {
 			Instance.QueueCallback(queue, method, secondsToWait);
-		}
-
-		public static void QueueCallback(QueueOrder queue, IEnumerator<WaitOrder> method, byte order = 127) {
-			if (!method.MoveNext()) return;
-			Behaviours.UpdateReference reference = default(Behaviours.UpdateReference);
-			int frameCount = 0;
-			long timestamp = TimeCounter.GetTimestamp();
-
-			Action OnUpdate = () => {
-				bool executeAgain = false;
-				switch (method.Current.type) {
-					case WaitOrder.Type.SkipFrames:
-						frameCount++;
-						if (frameCount > method.Current.frames) executeAgain = true;
-						break;
-					case WaitOrder.Type.Seconds:
-						double secondsPassed = TimeCounter.ElapsedSeconds(timestamp, TimeCounter.GetTimestamp());
-						if (secondsPassed > method.Current.seconds) executeAgain = true;
-						break;
-					default:
-						executeAgain = true;
-						break;
-				}
-				if (executeAgain) {
-					if (method.MoveNext()) {
-						frameCount = 0;
-						timestamp = TimeCounter.GetTimestamp();
-					} else {
-						Instance.RemoveUpdateCallback(reference);
-					}
-				}
-			};
-			reference = Instance.AddUpdateCallback(OnUpdate, queue, order);
 		}
 	}
 }
