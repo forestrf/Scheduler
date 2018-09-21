@@ -1,4 +1,5 @@
-﻿using Ashkatchap.UnityScheduler.Behaviours;
+﻿using Ashkatchap.Scheduler;
+using Ashkatchap.UnityScheduler.Behaviours;
 using System;
 using UnityEngine;
 
@@ -68,10 +69,10 @@ namespace Ashkatchap.UnityScheduler {
 			}
 		}
 
-		public static Behaviours.UpdateReference AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
+		public static FrameUpdateReference AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
 			return Instance.AddUpdateCallback(method, queue, order);
 		}
-		public static void RemoveUpdateCallback(Behaviours.UpdateReference reference) {
+		public static void RemoveUpdateCallback(FrameUpdateReference reference) {
 			Instance.RemoveUpdateCallback(reference);
 		}
 
@@ -80,6 +81,16 @@ namespace Ashkatchap.UnityScheduler {
 		}
 		public static void QueueCallback(QueueOrder queue, Action method, float secondsToWait) {
 			Instance.QueueCallback(queue, method, secondsToWait);
+		}
+	}
+
+	public struct FrameUpdateReference {
+		public readonly QueueOrder queue;
+		public readonly UpdateReference reference;
+
+		public FrameUpdateReference(QueueOrder queue, UpdateReference reference) {
+			this.queue = queue;
+			this.reference = reference;
 		}
 	}
 }

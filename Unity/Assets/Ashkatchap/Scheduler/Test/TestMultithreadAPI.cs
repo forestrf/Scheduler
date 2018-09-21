@@ -1,12 +1,11 @@
 ﻿using Ashkatchap.UnityScheduler;
-using Ashkatchap.UnityScheduler.Behaviours;
 using System;
 using UnityEngine;
 using UnityEngine.Profiling;
 
 public class TestMultithreadAPI : MonoBehaviour {
-	UpdateReference firstUpdate;
-	UpdateReference secondUpdate;
+	FrameUpdateReference firstUpdate;
+	FrameUpdateReference secondUpdate;
 	Ashkatchap.Scheduler.QueuedJob[] jobs;
 
 	public int arraySize = 100000;

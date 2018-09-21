@@ -32,8 +32,10 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 			SetupUpdaters();
 			Debug.Log("Updater GameObject created and Updater Behaviours configured");
 
+#if !UNITY_WEBGL || (!FORCE_WEBGL && UNITY_EDITOR)
 			ThreadedJobs.MultithreadingStart();
 			Debug.Log("Multithread Support started");
+#endif
 		}
 
 		private void OnDisable() {
@@ -84,11 +86,11 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 				});
 		}
 
-		public UpdateReference AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
-			return new UpdateReference(queue, GetUpdaterList(queue).AddUpdateCallback(method, order));
+		public FrameUpdateReference AddUpdateCallback(Action method, QueueOrder queue, byte order = 127) {
+			return new FrameUpdateReference(queue, GetUpdaterList(queue).AddUpdateCallback(method, order));
 		}
 
-		public void RemoveUpdateCallback(UpdateReference reference) {
+		public void RemoveUpdateCallback(FrameUpdateReference reference) {
 			var updater = GetUpdaterList(reference.queue);
 			updater.RemoveUpdateCallback(reference.reference);
 		}
@@ -119,16 +121,6 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 				case QueueOrder.LateUpdate: return lateUpdate;
 				case QueueOrder.PostLateUpdate: return lastLateUpdate;
 			}
-		}
-	}
-
-	public struct UpdateReference {
-		public readonly QueueOrder queue;
-		public readonly Scheduler.UpdateReference reference;
-
-		public UpdateReference(QueueOrder queue, Scheduler.UpdateReference reference) {
-			this.queue = queue;
-			this.reference = reference;
 		}
 	}
 }
