@@ -45,7 +45,7 @@ public class TestUpdaterAPI : MonoBehaviour {
 	void Update() {
 		count = 0;
 	}
-	
+
 	void DoNothing() {
 		count++;
 	}

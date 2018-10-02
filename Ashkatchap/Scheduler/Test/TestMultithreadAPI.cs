@@ -13,7 +13,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 	public int NUM_THREADS = 8;
 
 	public int workPerIteration = 10000;
-	
+
 	Action UpdateMethod1Cached;
 	Action UpdateMethod2Cached;
 	Action MultithreadDoNothingCached;
@@ -47,7 +47,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 		if (started && GUILayout.Button("END")) {
 			OnDisable();
 		}
-			
+
 		singleThread = GUILayout.Toggle(singleThread, "single Thread");
 
 		GUILayout.Label("NUM_THREADS");
@@ -56,7 +56,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 		GUILayout.Label("work Per Iteration");
 		workPerIteration = int.Parse(GUILayout.TextField(workPerIteration.ToString()));
 	}
-	
+
 	void UpdateMethod1() {
 		Ashkatchap.Scheduler.ThreadedJobs.FORCE_SINGLE_THREAD = singleThread;
 		Ashkatchap.Scheduler.ThreadedJobs.DESIRED_NUM_CORES = NUM_THREADS;
@@ -66,7 +66,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 		}
 		Profiler.EndSample();
 	}
-		
+
 	void UpdateMethod2() {
 		Profiler.BeginSample("Wait Multithread");
 		for (int i = 0; i < jobs.Length; i++) {
@@ -78,7 +78,7 @@ public class TestMultithreadAPI : MonoBehaviour {
 	void MultithreadDoNothing() {
 		int ignore = 1;
 		for (int i = 0; i < workPerIteration; i++) ignore += i % ignore;
-			
+
 		//Thread.Sleep(1);
 	}
 }

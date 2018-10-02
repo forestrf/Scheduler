@@ -20,10 +20,10 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 		private readonly Updater firstLateUpdate = new Updater();
 		private readonly Updater lateUpdate = new Updater();
 		private readonly Updater lastLateUpdate = new Updater();
-		
+
 
 		private void OnEnable() {
-			gameObject.hideFlags = HideFlags.HideAndDontSave;
+			//gameObject.hideFlags = HideFlags.HideAndDontSave;
 			DontDestroyOnLoad(gameObject);
 
 			firstUpdater = gameObject.AddComponent<FirstUpdaterBehaviour>();
@@ -56,7 +56,7 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 						afterPhysicsExecuted.Execute(OnException);
 						afterFixedUpdateIsReady = false;
 					}
-					
+
 					firstFixedUpdate.Execute(OnException);
 					fixedUpdate.Execute(OnException);
 				},
