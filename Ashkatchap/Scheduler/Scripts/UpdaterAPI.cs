@@ -55,7 +55,7 @@ namespace Ashkatchap.UnityScheduler {
 	};
 
 	public static class UpdaterAPI {
-		static FrameUpdater Instance;
+		private static FrameUpdater Instance;
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		static void OnRuntimeMethodLoad() {
@@ -79,8 +79,9 @@ namespace Ashkatchap.UnityScheduler {
 		public static void QueueCallback(QueueOrder queue, Action method) {
 			Instance.QueueCallback(queue, method);
 		}
-		public static void QueueCallback(QueueOrder queue, Action method, float secondsToWait) {
-			Instance.QueueCallback(queue, method, secondsToWait);
+		/// <param name="scaledTime">Be affected by Time.timeScale</param>
+		public static void QueueCallback(QueueOrder queue, Action method, float secondsToWait, bool scaledTime = true) {
+			Instance.QueueCallback(queue, method, secondsToWait, scaledTime);
 		}
 	}
 

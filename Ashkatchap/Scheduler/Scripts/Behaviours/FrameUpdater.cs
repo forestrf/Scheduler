@@ -4,6 +4,8 @@ using UnityEngine;
 
 namespace Ashkatchap.UnityScheduler.Behaviours {
 	public class FrameUpdater : MonoBehaviour {
+		private static Timer UnityTimer = new Timer();
+
 		private FirstUpdaterBehaviour firstUpdater;
 		private LastUpdaterBehaviour lastUpdater;
 
@@ -66,6 +68,8 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 						afterFixedUpdateIsReady = false;
 					}
 
+					UnityTimer.UpdateCurrentTime();
+
 					firstUpdate.Execute(OnException);
 					update.Execute(OnException);
 				},
@@ -100,8 +104,13 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 			Debug.Log("Queued Update method");
 		}
 
-		internal void QueueCallback(QueueOrder queue, Action method, float secondsToWait) {
-			GetUpdaterList(queue).QueueCallback(method, secondsToWait);
+		internal void QueueCallback(QueueOrder queue, Action method, float secondsToWait, bool scaledTime = true) {
+			if (scaledTime) {
+				GetUpdaterList(queue).QueueCallback(UnityTimer, method, secondsToWait);
+			}
+			else {
+				GetUpdaterList(queue).QueueCallback(method, secondsToWait);
+			}
 		}
 
 		private Updater GetUpdaterList(QueueOrder queue) {
