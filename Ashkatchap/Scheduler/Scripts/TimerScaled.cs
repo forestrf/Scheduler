@@ -2,15 +2,15 @@
 using UnityEngine;
 
 namespace Ashkatchap.UnityScheduler {
-	public class Timer : ITimer {
+	public class TimerScaled : ITimer {
 		private double cachedTime;
 
-		public Timer() {
-			cachedTime = Time.realtimeSinceStartup;
+		public TimerScaled() {
+			cachedTime = Time.time;
 		}
 
 		public void UpdateCurrentTime() {
-			cachedTime = Time.realtimeSinceStartup;
+			cachedTime = Time.time;
 		}
 
 		public double GetCurrentTime() {

@@ -4,7 +4,8 @@ using UnityEngine;
 
 namespace Ashkatchap.UnityScheduler.Behaviours {
 	public class FrameUpdater : MonoBehaviour {
-		private static Timer UnityTimer;
+		private static TimerScaled UnityTimerScaled;
+		private static TimerUnscaled UnityTimerUnscaled;
 
 		private FirstUpdaterBehaviour firstUpdater;
 		private LastUpdaterBehaviour lastUpdater;
@@ -24,8 +25,9 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 		private readonly Updater lastLateUpdate = new Updater();
 
 		private void Awake() {
-			if (null == UnityTimer) {
-				UnityTimer = new Timer();
+			if (null == UnityTimerScaled) {
+				UnityTimerScaled = new TimerScaled();
+				UnityTimerUnscaled = new TimerUnscaled();
 			}
 		}
 
@@ -73,7 +75,8 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 						afterFixedUpdateIsReady = false;
 					}
 
-					UnityTimer.UpdateCurrentTime();
+					UnityTimerScaled.UpdateCurrentTime();
+					UnityTimerUnscaled.UpdateCurrentTime();
 
 					firstUpdate.Execute(OnException);
 					update.Execute(OnException);
@@ -110,12 +113,7 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 		}
 
 		internal void QueueCallback(QueueOrder queue, Action method, float secondsToWait, bool scaledTime = true) {
-			if (scaledTime) {
-				GetUpdaterList(queue).QueueCallback(UnityTimer, method, secondsToWait);
-			}
-			else {
-				GetUpdaterList(queue).QueueCallback(method, secondsToWait);
-			}
+			GetUpdaterList(queue).QueueCallback(scaledTime ? (ITimer) UnityTimerScaled : UnityTimerUnscaled, method, secondsToWait);
 		}
 
 		private Updater GetUpdaterList(QueueOrder queue) {
