@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Ashkatchap.UnityScheduler.Behaviours {
 	public class FrameUpdater : MonoBehaviour {
-		private static Timer UnityTimer = new Timer();
+		private static Timer UnityTimer;
 
 		private FirstUpdaterBehaviour firstUpdater;
 		private LastUpdaterBehaviour lastUpdater;
@@ -23,6 +23,11 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 		private readonly Updater lateUpdate = new Updater();
 		private readonly Updater lastLateUpdate = new Updater();
 
+		private void Awake() {
+			if (null == UnityTimer) {
+				UnityTimer = new Timer();
+			}
+		}
 
 		private void OnEnable() {
 			//gameObject.hideFlags = HideFlags.HideAndDontSave;
