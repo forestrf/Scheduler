@@ -1,5 +1,4 @@
 ﻿using Ashkatchap.Scheduler;
-using Ashkatchap.UnityScheduler.Behaviours;
 using System;
 using UnityEngine;
 
@@ -55,7 +54,7 @@ namespace Ashkatchap.UnityScheduler {
 	};
 
 	public static class UpdaterAPI {
-		private static FrameUpdater Instance;
+		private static Behaviours.FrameUpdater Instance;
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		static void OnRuntimeMethodLoad() {
@@ -64,7 +63,7 @@ namespace Ashkatchap.UnityScheduler {
 				if (!UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode)
 					return;
 #endif
-				Instance = new GameObject("Updater").AddComponent<FrameUpdater>();
+				Instance = new GameObject("Updater").AddComponent<Behaviours.FrameUpdater>();
 				Debug.Log("Updater created");
 			}
 		}
