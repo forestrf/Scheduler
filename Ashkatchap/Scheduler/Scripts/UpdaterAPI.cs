@@ -93,5 +93,9 @@ namespace Ashkatchap.UnityScheduler {
 			this.queue = queue;
 			this.reference = reference;
 		}
+
+		public void RemoveUpdateCallback() {
+			UpdaterAPI.RemoveUpdateCallback(this);
+		}
 	}
 }
