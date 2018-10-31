@@ -3,7 +3,7 @@
 namespace Ashkatchap.Scheduler {
 	public static class ThreadedJobs {
 		public static Action<Exception> OnException;
-		public static bool FORCE_SINGLE_THREAD = false;
+		public static volatile bool FORCE_SINGLE_THREAD = false;
 		public static readonly int AVAILABLE_CORES = Environment.ProcessorCount;
 		public static int DESIRED_NUM_CORES = AVAILABLE_CORES;
 		public static int CORES_IN_USE {
