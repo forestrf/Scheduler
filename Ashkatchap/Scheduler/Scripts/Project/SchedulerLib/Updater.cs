@@ -13,12 +13,14 @@ namespace Ashkatchap.Scheduler {
 		private readonly UnorderedList<ActionWrapped>[] recurrentCallbacks = new UnorderedList<ActionWrapped>[256];
 		private readonly UnorderedList<UpdateReference>[] delayedRemoves = new UnorderedList<UpdateReference>[256];
 		private readonly Thread mainThread;
+		private readonly Action<Exception> onException;
 		private int nextRecurrentId;
 
 		/// <summary>
 		/// Create a new Updater. The current thread will be considered the main thread.
 		/// </summary>
-		public Updater(int initialSize = 16, int stepIncrement = 16) {
+		public Updater(Action<Exception> onException, int initialSize = 16, int stepIncrement = 16) {
+			this.onException = onException;
 			mainThread = Thread.CurrentThread;
 			for (int i = 0; i < recurrentCallbacks.Length; i++) {
 				recurrentCallbacks[i] = new UnorderedList<ActionWrapped>(initialSize, stepIncrement);
@@ -31,7 +33,7 @@ namespace Ashkatchap.Scheduler {
 		}
 
 		/// <param name="onException">To avoid generating garbage use a static method or a cached delegate</param>
-		public void Execute(Action<Exception> onException) {
+		public void Execute() {
 			defaultTimer.UpdateCurrentTime();
 
 			timesUpdated++;

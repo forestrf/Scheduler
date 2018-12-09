@@ -10,19 +10,19 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 		private FirstUpdaterBehaviour firstUpdater;
 		private LastUpdaterBehaviour lastUpdater;
 
-		private readonly Updater firstFixedUpdate = new Updater();
-		private readonly Updater fixedUpdate = new Updater();
-		private readonly Updater lastFixedUpdate = new Updater();
+		private readonly Updater firstFixedUpdate = new Updater(OnException);
+		private readonly Updater fixedUpdate = new Updater(OnException);
+		private readonly Updater lastFixedUpdate = new Updater(OnException);
 
-		private readonly Updater afterPhysicsExecuted = new Updater();
+		private readonly Updater afterPhysicsExecuted = new Updater(OnException);
 
-		private readonly Updater firstUpdate = new Updater();
-		private readonly Updater update = new Updater();
-		private readonly Updater lastUpdate = new Updater();
+		private readonly Updater firstUpdate = new Updater(OnException);
+		private readonly Updater update = new Updater(OnException);
+		private readonly Updater lastUpdate = new Updater(OnException);
 
-		private readonly Updater firstLateUpdate = new Updater();
-		private readonly Updater lateUpdate = new Updater();
-		private readonly Updater lastLateUpdate = new Updater();
+		private readonly Updater firstLateUpdate = new Updater(OnException);
+		private readonly Updater lateUpdate = new Updater(OnException);
+		private readonly Updater lastLateUpdate = new Updater(OnException);
 
 		private void Awake() {
 			if (null == UnityTimerScaled) {
@@ -62,39 +62,39 @@ namespace Ashkatchap.UnityScheduler.Behaviours {
 			firstUpdater.SetQueues(
 				() => {
 					if (afterFixedUpdateIsReady) {
-						afterPhysicsExecuted.Execute(OnException);
+						afterPhysicsExecuted.Execute();
 						afterFixedUpdateIsReady = false;
 					}
 
-					firstFixedUpdate.Execute(OnException);
-					fixedUpdate.Execute(OnException);
+					firstFixedUpdate.Execute();
+					fixedUpdate.Execute();
 				},
 				() => {
 					if (afterFixedUpdateIsReady) {
-						afterPhysicsExecuted.Execute(OnException);
+						afterPhysicsExecuted.Execute();
 						afterFixedUpdateIsReady = false;
 					}
 
 					UnityTimerScaled.UpdateCurrentTime();
 					UnityTimerUnscaled.UpdateCurrentTime();
 
-					firstUpdate.Execute(OnException);
-					update.Execute(OnException);
+					firstUpdate.Execute();
+					update.Execute();
 				},
 				() => {
-					firstLateUpdate.Execute(OnException);
-					lateUpdate.Execute(OnException);
+					firstLateUpdate.Execute();
+					lateUpdate.Execute();
 				});
 			lastUpdater.SetQueues(
 				() => {
-					lastFixedUpdate.Execute(OnException);
+					lastFixedUpdate.Execute();
 					afterFixedUpdateIsReady = true;
 				},
 				() => {
-					lastUpdate.Execute(OnException);
+					lastUpdate.Execute();
 				},
 				() => {
-					lastLateUpdate.Execute(OnException);
+					lastLateUpdate.Execute();
 				});
 		}
 
